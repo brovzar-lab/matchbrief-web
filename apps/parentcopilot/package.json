@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "NODE_ENV=development vitest run"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.29.0",

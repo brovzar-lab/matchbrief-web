@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { isDemoMode } from '../lib/demo';
 import { useAppStore } from '../lib/store';
+import { saveEvent } from '../lib/events';
 import Toast from '../components/Toast';
-import type { EventType, FeedMethod, DiaperType } from '../lib/types';
+import type { BabyEvent, EventType, FeedMethod, DiaperType } from '../lib/types';
 
 type LogTab = EventType;
 
@@ -15,7 +17,8 @@ const TABS: { id: LogTab; label: string; emoji: string }[] = [
 
 export default function LogEntryScreen(): JSX.Element {
   const navigate = useNavigate();
-  const { baby, addEvent } = useAppStore();
+  const queryClient = useQueryClient();
+  const { user, baby, addEvent } = useAppStore();
   const [activeTab, setActiveTab] = useState<LogTab>('feed');
   const [toast, setToast] = useState<string | null>(null);
 
@@ -36,8 +39,28 @@ export default function LogEntryScreen(): JSX.Element {
     if (!baby) return;
     const now = new Date();
 
+    // Validate feed inputs
     if (activeTab === 'feed') {
-      addEvent({
+      if (feedMethod === 'bottle') {
+        const amt = parseFloat(feedAmount);
+        if (isNaN(amt) || amt < 0) {
+          setToast('Amount cannot be negative');
+          return;
+        }
+      }
+      if (feedMethod === 'breast') {
+        const dur = parseInt(feedDuration, 10);
+        if (isNaN(dur) || dur < 0) {
+          setToast('Duration cannot be negative');
+          return;
+        }
+      }
+    }
+
+    let newEvent: BabyEvent;
+
+    if (activeTab === 'feed') {
+      newEvent = {
         id: `feed-${Date.now()}`,
         babyId: baby.id,
         type: 'feed',
@@ -45,32 +68,40 @@ export default function LogEntryScreen(): JSX.Element {
         method: feedMethod,
         amountOz: feedMethod === 'bottle' ? parseFloat(feedAmount) : undefined,
         durationMinutes: feedMethod === 'breast' ? parseInt(feedDuration, 10) : undefined,
-      });
+      };
     } else if (activeTab === 'sleep') {
       const start = new Date(sleepStart);
-      addEvent({
+      newEvent = {
         id: `sleep-${Date.now()}`,
         babyId: baby.id,
         type: 'sleep',
         timestamp: start,
         startTime: start,
-      });
+      };
     } else {
-      addEvent({
+      newEvent = {
         id: `diaper-${Date.now()}`,
         babyId: baby.id,
         type: 'diaper',
         timestamp: now,
         diaperType,
-      });
+      };
     }
+
+    addEvent(newEvent);
 
     if (isDemoMode) {
       setToast('Demo mode — not saved to backend');
-    } else {
+    } else if (user) {
+      saveEvent(user.uid, baby.id, newEvent).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['events', user.uid, baby.id] });
+      }).catch(() => {
+        // store already updated; Firestore failure is non-fatal
+      });
       setToast('Logged!');
     }
-    setTimeout(() => navigate('/'), 1500);
+
+    setTimeout(() => navigate('/'), 1200);
   }
 
   return (
@@ -137,7 +168,7 @@ export default function LogEntryScreen(): JSX.Element {
               <label className="block text-sm font-medium text-gray-700 mb-1">Duration (min)</label>
               <input
                 type="number"
-                min="1"
+                min="0"
                 max="60"
                 value={feedDuration}
                 onChange={(e) => setFeedDuration(e.target.value)}
