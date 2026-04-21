@@ -21,6 +21,7 @@ export default function LogEntryScreen(): JSX.Element {
   const { user, baby, addEvent } = useAppStore();
   const [activeTab, setActiveTab] = useState<LogTab>('feed');
   const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Feed state
   const [feedMethod, setFeedMethod] = useState<FeedMethod>('bottle');
@@ -36,7 +37,8 @@ export default function LogEntryScreen(): JSX.Element {
   const [diaperType, setDiaperType] = useState<DiaperType>('wet');
 
   function handleSave(): void {
-    if (!baby) return;
+    if (!baby || saving) return;
+    setSaving(true);
     const now = new Date();
 
     // Validate feed inputs
@@ -101,12 +103,15 @@ export default function LogEntryScreen(): JSX.Element {
       setToast('Logged!');
     }
 
-    setTimeout(() => navigate('/'), 1200);
+    setTimeout(() => {
+      setSaving(false);
+      navigate('/');
+    }, 1200);
   }
 
   return (
     <div className="px-4 pt-5 space-y-5">
-      <h1 className="text-xl font-bold text-gray-900">Log Entry</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Log Entry</h1>
 
       {/* Tab selector */}
       <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
@@ -114,7 +119,7 @@ export default function LogEntryScreen(): JSX.Element {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg text-sm font-medium transition-colors ${
               activeTab === tab.id
                 ? 'bg-white shadow text-brand-700'
                 : 'text-gray-500 hover:text-gray-700'
@@ -136,7 +141,7 @@ export default function LogEntryScreen(): JSX.Element {
                 <button
                   key={m}
                   onClick={() => setFeedMethod(m)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 transition-colors capitalize ${
+                  className={`flex-1 py-3.5 rounded-xl text-sm font-medium border-2 transition-colors capitalize ${
                     feedMethod === m
                       ? 'border-brand-600 bg-brand-50 text-brand-700'
                       : 'border-gray-200 text-gray-600'
@@ -204,7 +209,7 @@ export default function LogEntryScreen(): JSX.Element {
               <button
                 key={t}
                 onClick={() => setDiaperType(t)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 transition-colors capitalize ${
+                className={`flex-1 py-3.5 rounded-xl text-sm font-medium border-2 transition-colors capitalize ${
                   diaperType === t
                     ? 'border-brand-600 bg-brand-50 text-brand-700'
                     : 'border-gray-200 text-gray-600'
@@ -219,9 +224,10 @@ export default function LogEntryScreen(): JSX.Element {
 
       <button
         onClick={handleSave}
-        className="w-full bg-brand-600 text-white rounded-xl py-3.5 font-semibold text-sm hover:bg-brand-700 transition-colors mt-4"
+        disabled={saving}
+        className="w-full bg-brand-600 text-white rounded-xl py-3.5 font-semibold text-sm hover:bg-brand-700 disabled:opacity-60 transition-colors mt-4"
       >
-        Save Entry
+        {saving ? 'Saving…' : 'Save Entry'}
       </button>
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}

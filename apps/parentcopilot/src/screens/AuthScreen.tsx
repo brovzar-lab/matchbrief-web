@@ -70,7 +70,7 @@ export default function AuthScreen(): JSX.Element {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-semibold text-sm hover:bg-brand-700 disabled:opacity-50 transition-colors"
+                className="w-full bg-brand-600 text-white rounded-lg py-3.5 font-semibold text-sm hover:bg-brand-700 disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
@@ -79,7 +79,7 @@ export default function AuthScreen(): JSX.Element {
 
           <button
             onClick={handleDemoLogin}
-            className="w-full border-2 border-brand-600 text-brand-600 rounded-lg py-2.5 font-semibold text-sm hover:bg-brand-50 transition-colors"
+            className="w-full border-2 border-brand-600 text-brand-600 rounded-lg py-3.5 font-semibold text-sm hover:bg-brand-50 transition-colors"
           >
             Continue as Demo User
           </button>

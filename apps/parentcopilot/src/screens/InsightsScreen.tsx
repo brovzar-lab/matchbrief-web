@@ -74,7 +74,7 @@ export default function InsightsScreen(): JSX.Element {
 
   return (
     <div className="px-4 pt-5 pb-2 space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">Insights</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Insights</h1>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-3">

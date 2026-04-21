@@ -106,7 +106,7 @@ export default function HomeScreen(): JSX.Element {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Good morning 👋</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Good morning 👋</h1>
           {baby && (
             <p className="text-sm text-gray-500">
               {baby.name} · Day {Math.floor((Date.now() - baby.birthDate.getTime()) / 86400000)}
@@ -130,9 +130,9 @@ export default function HomeScreen(): JSX.Element {
       {/* Next prediction card */}
       {nextPrediction.estimatedTime && (
         <div className="bg-brand-600 rounded-2xl p-4 text-white shadow-md">
-          <p className="text-brand-100 text-xs font-medium uppercase tracking-wide mb-1">Up Next</p>
+          <p className="text-white/70 text-xs font-medium uppercase tracking-wide mb-1">Up Next</p>
           <p className="text-lg font-bold">{nextPrediction.label}</p>
-          <p className="text-brand-100 text-sm mt-1">{nextPrediction.description}</p>
+          <p className="text-white/80 text-sm mt-1">{nextPrediction.description}</p>
           <div className="mt-3 flex items-center gap-2">
             <div className="bg-white/20 rounded-full px-3 py-1 text-xs font-semibold">
               ~{formatTime(nextPrediction.estimatedTime)}
@@ -147,17 +147,23 @@ export default function HomeScreen(): JSX.Element {
       {/* Recent events */}
       <section>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Recent Events</h2>
-        <div className="space-y-2">
-          {recentEvents.map((event) => (
-            <div key={event.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
-              <span className="text-2xl">{eventEmoji(event)}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{eventLabel(event)}</p>
-                <p className="text-xs text-gray-400">{formatRelative(event.timestamp)}</p>
+        {recentEvents.length === 0 ? (
+          <div className="bg-white rounded-xl px-4 py-6 shadow-sm text-center">
+            <p className="text-sm text-gray-400">No events yet — tap Log to start tracking</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentEvents.map((event) => (
+              <div key={event.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 shadow-sm">
+                <span className="text-2xl">{eventEmoji(event)}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{eventLabel(event)}</p>
+                  <p className="text-xs text-gray-500">{formatRelative(event.timestamp)}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Live tips */}
