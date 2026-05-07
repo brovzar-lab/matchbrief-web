@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "SkillSprint",
+    "slug": "skillsprint",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0F0F13"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ing.paperclip.skillsprint"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F0F13"
+      },
+      "package": "ing.paperclip.skillsprint",
+      "permissions": ["INTERNET"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
