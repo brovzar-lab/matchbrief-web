@@ -55,7 +55,9 @@ export default function SprintResultsScreen({ navigation, route }: Props) {
       useNativeDriver: false,
     }).start();
     return () => animValue.removeListener(listenerId);
-  }, [result.score, animValue]);
+    // animValue is a stable ref — intentionally omitted from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result.score]);
 
   const ringOffset = RING_CIRCUMFERENCE * (1 - displayScore / 100);
 

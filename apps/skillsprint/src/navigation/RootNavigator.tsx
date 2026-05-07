@@ -6,7 +6,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 import { TRACKS, isDemoMode } from '../lib/config';
 import { useStore } from '../lib/store';
 import type { SubmitResult } from '../hooks/useSubmitChallenge';
-import type { Difficulty } from '../lib/mockData';
+import type { Difficulty } from '../types/challenges';
 import AuthScreen from '../screens/AuthScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import HomeScreen from '../screens/HomeScreen';
