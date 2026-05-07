@@ -121,7 +121,7 @@ const lr = StyleSheet.create({
 });
 
 export default function LeaderboardScreen(_props: Props) {
-  const track = useStore((s) => s.track);
+  const track = useStore((s) => s.selectedTrack) ?? 'coding';
   const accent = TRACKS[track].accent;
   const [tab, setTab] = useState<'global' | 'friends'>('global');
   const entries =

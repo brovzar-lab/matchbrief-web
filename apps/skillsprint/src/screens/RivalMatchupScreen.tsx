@@ -11,7 +11,7 @@ import type { TabParamList } from '../navigation/RootNavigator';
 type Props = BottomTabScreenProps<TabParamList, 'Rival'>;
 
 export default function RivalMatchupScreen(_props: Props) {
-  const track = useStore((s) => s.track);
+  const track = useStore((s) => s.selectedTrack) ?? 'coding';
   const accent = TRACKS[track].accent;
   const data = DEMO_RIVAL;
   const maxScore = Math.max(data.userScore, data.rivalScore, 1);

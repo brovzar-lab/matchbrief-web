@@ -30,7 +30,7 @@ const FEATURES: FeatureRow[] = [
 ];
 
 export default function PaywallScreen({ navigation }: Props) {
-  const track = useStore((s) => s.track);
+  const track = useStore((s) => s.selectedTrack) ?? 'coding';
   const showToast = useStore((s) => s.showToast);
   const accent = TRACKS[track].accent;
 

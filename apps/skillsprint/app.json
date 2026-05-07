@@ -11,18 +11,20 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "ing.paperclip.skillsprint"
+      "bundleIdentifier": "com.lemaa.skillsprint",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0F0F13"
       },
-      "package": "ing.paperclip.skillsprint",
+      "package": "com.lemaa.skillsprint",
       "permissions": ["INTERNET"]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "plugins": ["expo-apple-authentication"],
     "experiments": {
       "typedRoutes": false
     }

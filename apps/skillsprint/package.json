@@ -1,7 +1,7 @@
 {
-  "name": "skillsprint",
+  "name": "@lemaa/skillsprint",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -16,7 +16,9 @@
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",
     "expo": "~52.0.41",
+    "expo-apple-authentication": "~7.1.3",
     "expo-status-bar": "~2.0.1",
+    "firebase": "^10.12.0",
     "react": "18.3.1",
     "react-native": "0.76.7",
     "react-native-gesture-handler": "~2.20.2",

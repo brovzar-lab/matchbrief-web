@@ -17,7 +17,7 @@ import type { TabParamList } from '../navigation/RootNavigator';
 type Props = BottomTabScreenProps<TabParamList, 'Profile'>;
 
 export default function ProfileScreen(_props: Props) {
-  const track = useStore((s) => s.track);
+  const track = useStore((s) => s.selectedTrack) ?? 'coding';
   const setTrack = useStore((s) => s.setTrack);
   const accent = TRACKS[track].accent;
   const data = DEMO_PROFILE;

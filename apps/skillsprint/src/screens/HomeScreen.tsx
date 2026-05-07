@@ -23,7 +23,7 @@ type Props = CompositeScreenProps<
 >;
 
 export default function HomeScreen({ navigation }: Props) {
-  const track = useStore((s) => s.track);
+  const track = useStore((s) => s.selectedTrack) ?? 'coding';
   const accent = TRACKS[track].accent;
   const data = DEMO_HOME;
 

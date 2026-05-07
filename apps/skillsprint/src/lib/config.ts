@@ -5,10 +5,10 @@ export const isDemoMode =
 export const SPRINT_LIMIT_FREE = 3;
 
 export const TRACKS = {
-  coding: { label: 'Coding', accent: '#00C8FF', emoji: '💻' },
-  design: { label: 'Design', accent: '#FF6B9D', emoji: '🎨' },
-  marketing: { label: 'Marketing', accent: '#FFB347', emoji: '📣' },
-  leadership: { label: 'Leadership', accent: '#A78BFA', emoji: '🏆' },
+  coding: { label: 'Coding', accent: '#3B82F6', emoji: '💻' },
+  writing: { label: 'Writing', accent: '#F87171', emoji: '✍️' },
+  design: { label: 'Design', accent: '#8B5CF6', emoji: '🎨' },
+  critical_thinking: { label: 'Critical Thinking', accent: '#F59E0B', emoji: '🧠' },
 } as const;
 
 export type TrackId = keyof typeof TRACKS;
