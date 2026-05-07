@@ -7,11 +7,12 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
-import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, SUCCESS, isDemoMode } from '../lib/config';
+import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, isDemoMode } from '../lib/config';
 import { useStore } from '../lib/store';
 import { DemoBanner } from '../components/DemoBanner';
 
@@ -97,23 +98,17 @@ export default function DeliverySettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* TODO: integrate @react-native-community/datetimepicker */}
         {showPicker && (
-          <View style={styles.pickerPlaceholder}>
-            <Text style={styles.pickerPlaceholderText}>
-              DateTimePicker will render here{'\n'}
-              (@react-native-community/datetimepicker)
-            </Text>
-            <TouchableOpacity
-              style={styles.pickerDoneBtn}
-              onPress={() => {
-                setDeliveryDate(new Date(deliveryDate.getTime() + 30 * 24 * 60 * 60 * 1000));
-                setShowPicker(false);
-              }}
-            >
-              <Text style={styles.pickerDoneBtnText}>Set +30 days (demo)</Text>
-            </TouchableOpacity>
-          </View>
+          <DateTimePicker
+            value={deliveryDate}
+            mode="date"
+            minimumDate={tomorrow}
+            onChange={(_, date) => {
+              setShowPicker(Platform.OS === 'ios');
+              if (date) setDeliveryDate(date);
+            }}
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          />
         )}
 
         <View style={styles.section}>
@@ -177,16 +172,6 @@ const styles = StyleSheet.create({
   },
   dateBtnText: { fontSize: 16, color: TEXT, fontWeight: '500' },
   dateBtnEdit: { fontSize: 15, color: ACCENT },
-  pickerPlaceholder: {
-    backgroundColor: CARD,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    gap: 12,
-  },
-  pickerPlaceholderText: { color: SUBTEXT, textAlign: 'center', fontSize: 14 },
-  pickerDoneBtn: { backgroundColor: ACCENT, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
-  pickerDoneBtnText: { color: '#fff', fontWeight: '600' },
   legacyCard: {
     backgroundColor: CARD,
     borderWidth: 1,
