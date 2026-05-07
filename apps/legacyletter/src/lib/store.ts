@@ -18,6 +18,7 @@ interface AppState {
   // Actions
   setUser: (user: AppUser | null) => void;
   setAuthLoading: (v: boolean) => void;
+  updateSubscription: (subscription: UserSubscription) => void;
   setLegacies: (legacies: Legacy[]) => void;
   addLegacy: (legacy: Legacy) => void;
   updateLegacy: (id: string, patch: Partial<Legacy>) => void;
@@ -36,6 +37,8 @@ export const useStore = create<AppState>((set) => ({
 
   setUser: (user) => set({ user }),
   setAuthLoading: (v) => set({ isAuthLoading: v }),
+  updateSubscription: (subscription) =>
+    set((s) => s.user ? { user: { ...s.user, subscription } } : {}),
   setLegacies: (legacies) => set({ legacies }),
   addLegacy: (legacy) =>
     set((s) => ({ legacies: [legacy, ...s.legacies] })),

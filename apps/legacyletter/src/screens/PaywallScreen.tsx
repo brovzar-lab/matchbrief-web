@@ -6,38 +6,43 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
-import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, isDemoMode, TIERS } from '../lib/config';
+import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, isDemoMode } from '../lib/config';
 import { DemoBanner } from '../components/DemoBanner';
+import { useRevenueCat } from '../hooks/useRevenueCat';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const PLANS = [
   {
     id: 'pro_monthly',
+    productId: 'com.lemaa.legacyletter.pro_monthly',
     icon: '🎙️',
     name: 'Pro Monthly',
-    price: '$4.99/mo',
+    fallbackPrice: '$4.99/mo',
     features: ['Unlimited text legacies', 'Voice memo (5 min max)', 'Up to 20 recipients'],
     highlight: false,
   },
   {
     id: 'vault_monthly',
+    productId: 'com.lemaa.legacyletter.vault_monthly',
     icon: '🎥',
     name: 'Vault Monthly',
-    price: '$9.99/mo',
+    fallbackPrice: '$9.99/mo',
     features: ['Everything in Pro', 'Video legacies (2 min max)', 'Unlimited recipients', 'Media vault'],
     highlight: true,
   },
   {
     id: 'lifetime',
+    productId: 'com.lemaa.legacyletter.lifetime',
     icon: '♾️',
     name: 'Lifetime',
-    price: '$79 once',
+    fallbackPrice: '$79 once',
     features: ['Everything in Vault', 'Lifetime access', 'Priority delivery', 'No future charges'],
     highlight: false,
   },
@@ -46,24 +51,34 @@ const PLANS = [
 export default function PaywallScreen() {
   const nav = useNavigation<Nav>();
   const [selectedPlan, setSelectedPlan] = React.useState<string>('vault_monthly');
+  const { packages, isLoading, isPurchasing, isRestoring, purchase, restore } = useRevenueCat();
 
-  function handlePurchase() {
+  function getPriceString(productId: string, fallback: string): string {
+    return packages[productId]?.product.priceString ?? fallback;
+  }
+
+  async function handlePurchase() {
     if (isDemoMode) {
       Alert.alert('Demo Mode', 'RevenueCat purchase flow would launch here. Subscription unlocked for demo.');
       nav.goBack();
       return;
     }
-    // TODO: Purchases.purchasePackage() via react-native-purchases
-    Alert.alert('Coming soon', 'RevenueCat integration pending.');
+    const plan = PLANS.find((p) => p.id === selectedPlan);
+    if (!plan) return;
+    const success = await purchase(plan.productId);
+    if (success) nav.goBack();
   }
 
-  function handleRestore() {
+  async function handleRestore() {
     if (isDemoMode) {
       Alert.alert('Demo Mode', 'Restore purchases would contact RevenueCat here.');
       return;
     }
-    // TODO: Purchases.restorePurchases()
+    const success = await restore();
+    if (success) nav.goBack();
   }
+
+  const isBusy = isPurchasing || isRestoring;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -71,7 +86,7 @@ export default function PaywallScreen() {
       <View style={styles.topBar}>
         <View style={{ width: 44 }} />
         <Text style={styles.topBarTitle}>Unlock LegacyLetter</Text>
-        <TouchableOpacity onPress={() => nav.goBack()} style={styles.closeBtn}>
+        <TouchableOpacity onPress={() => nav.goBack()} style={styles.closeBtn} disabled={isBusy}>
           <Text style={styles.closeBtnText}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -95,6 +110,7 @@ export default function PaywallScreen() {
                 plan.highlight && styles.planCardHighlight,
               ]}
               onPress={() => setSelectedPlan(plan.id)}
+              disabled={isBusy}
             >
               {plan.highlight && (
                 <View style={styles.popularBadge}>
@@ -105,7 +121,13 @@ export default function PaywallScreen() {
                 <Text style={styles.planIcon}>{plan.icon}</Text>
                 <View style={styles.planTitleBlock}>
                   <Text style={styles.planName}>{plan.name}</Text>
-                  <Text style={styles.planPrice}>{plan.price}</Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={SUBTEXT} style={styles.priceLoader} />
+                  ) : (
+                    <Text style={styles.planPrice}>
+                      {getPriceString(plan.productId, plan.fallbackPrice)}
+                    </Text>
+                  )}
                 </View>
                 <View style={[styles.radio, selectedPlan === plan.id && styles.radioSelected]}>
                   {selectedPlan === plan.id && <View style={styles.radioDot} />}
@@ -120,11 +142,23 @@ export default function PaywallScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.purchaseBtn} onPress={handlePurchase}>
-          <Text style={styles.purchaseBtnText}>Continue</Text>
+        <TouchableOpacity
+          style={[styles.purchaseBtn, isBusy && styles.purchaseBtnDisabled]}
+          onPress={handlePurchase}
+          disabled={isBusy}
+        >
+          {isPurchasing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.purchaseBtnText}>Continue</Text>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleRestore}>
-          <Text style={styles.restoreText}>Restore Purchases</Text>
+        <TouchableOpacity onPress={handleRestore} disabled={isBusy}>
+          {isRestoring ? (
+            <ActivityIndicator color={SUBTEXT} size="small" />
+          ) : (
+            <Text style={styles.restoreText}>Restore Purchases</Text>
+          )}
         </TouchableOpacity>
         <Text style={styles.legal}>
           Subscriptions auto-renew. Cancel anytime in App Store / Google Play settings.
@@ -176,6 +210,7 @@ const styles = StyleSheet.create({
   planTitleBlock: { flex: 1 },
   planName: { fontSize: 17, fontWeight: '700', color: TEXT },
   planPrice: { fontSize: 14, color: SUBTEXT, marginTop: 2 },
+  priceLoader: { marginTop: 4, alignSelf: 'flex-start' },
   radio: {
     width: 22,
     height: 22,
@@ -195,6 +230,7 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: 'center',
   },
+  purchaseBtnDisabled: { opacity: 0.6 },
   purchaseBtnText: { color: '#fff', fontWeight: '800', fontSize: 18 },
   restoreText: { color: SUBTEXT, textAlign: 'center', fontSize: 14 },
   legal: { color: SUBTEXT, fontSize: 11, textAlign: 'center', lineHeight: 16, opacity: 0.7 },
