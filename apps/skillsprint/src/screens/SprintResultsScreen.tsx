@@ -1,65 +1,127 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DemoBanner } from '../components/DemoBanner';
 import { isDemoMode, TRACKS } from '../lib/config';
 import { useStore } from '../lib/store';
-import { DEMO_RESULTS } from '../lib/mockData';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import type { SubmitResult } from '../hooks/useSubmitChallenge';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SprintResults'>;
 
-export default function SprintResultsScreen({ navigation }: Props) {
-  const track = useStore((s) => s.track);
-  const accent = TRACKS[track].accent;
-  const data = DEMO_RESULTS;
+const RING_RADIUS = 80;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+const DEMO_FALLBACK: SubmitResult = {
+  score: 78,
+  feedback: [
+    'Good foundational understanding — your answer identifies the key concept.',
+    'Include a concrete real-world example to deepen the explanation.',
+    'Review related algorithmic patterns to build a stronger mental model.',
+  ],
+  scoredBy: 'deterministic',
+  cohortPercentile: 64,
+  timedOut: false,
+};
+
+export default function SprintResultsScreen({ navigation, route }: Props) {
+  const selectedTrack = useStore((s) => s.selectedTrack) ?? 'coding';
+  const accent = TRACKS[selectedTrack].accent;
+
+  const { result, difficulty } = route.params ?? {
+    result: DEMO_FALLBACK,
+    difficulty: 'Medium' as const,
+  };
+
+  const [displayScore, setDisplayScore] = useState(0);
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const listenerId = animValue.addListener(({ value }) => {
+      setDisplayScore(Math.round(value));
+    });
+    Animated.timing(animValue, {
+      toValue: result.score,
+      duration: 1200,
+      useNativeDriver: false,
+    }).start();
+    return () => animValue.removeListener(listenerId);
+  }, [result.score, animValue]);
+
+  const ringOffset = RING_CIRCUMFERENCE * (1 - displayScore / 100);
 
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       {isDemoMode && <DemoBanner />}
       <ScrollView contentContainerStyle={s.content}>
-        {/* Score */}
-        <View style={s.scoreSection}>
-          <Text style={s.scoreLabel}>Your Score</Text>
-          <View style={s.scoreRow}>
-            <Text style={[s.scoreValue, { color: accent }]}>{data.score}</Text>
-            <Text style={s.scoreMax}> / 100</Text>
+
+        {/* Score ring + animated count-up */}
+        <View style={s.ringSection}>
+          <Svg width={200} height={200} viewBox="0 0 200 200">
+            <Circle
+              cx={100}
+              cy={100}
+              r={RING_RADIUS}
+              stroke="#252540"
+              strokeWidth={12}
+              fill="none"
+            />
+            <Circle
+              cx={100}
+              cy={100}
+              r={RING_RADIUS}
+              stroke={accent}
+              strokeWidth={12}
+              fill="none"
+              strokeDasharray={`${RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
+              strokeDashoffset={ringOffset}
+              strokeLinecap="round"
+              rotation="-90"
+              origin="100, 100"
+            />
+          </Svg>
+          <View style={s.ringOverlay}>
+            <Text style={[s.scoreValue, { color: accent }]}>{displayScore}</Text>
+            <Text style={s.scoreMax}>/ 100</Text>
           </View>
         </View>
 
-        {/* XP badge */}
+        {/* Difficulty badge */}
         <View
           style={[
-            s.xpBadge,
+            s.difficultyBadge,
             { backgroundColor: accent + '22', borderColor: accent + '44' },
           ]}
         >
-          <Text style={[s.xpBadgeText, { color: accent }]}>
-            +{data.xpEarned} XP earned
-          </Text>
+          <Text style={[s.difficultyText, { color: accent }]}>{difficulty}</Text>
         </View>
 
-        {/* Cohort comparison bar */}
+        {/* Cohort percentile */}
         <View style={s.cohortCard}>
           <Text style={s.cohortText}>
-            You scored better than{' '}
+            Better than{' '}
             <Text style={[s.cohortPct, { color: accent }]}>
-              {data.percentile}%
+              {result.cohortPercentile}%
             </Text>{' '}
-            of users today
+            of today's submissions
           </Text>
           <View style={s.cohortTrackBg}>
             <View
               style={[
                 s.cohortFill,
-                { width: `${data.percentile}%`, backgroundColor: accent },
+                {
+                  width: `${result.cohortPercentile}%`,
+                  backgroundColor: accent,
+                },
               ]}
             />
           </View>
@@ -69,39 +131,40 @@ export default function SprintResultsScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Improvement notes */}
-        <View style={s.notesCard}>
-          <Text style={s.notesTitle}>Improvement Notes</Text>
-          {data.notes.map((note, i) => (
-            <View key={i} style={s.noteRow}>
+        {/* Feedback card */}
+        <View style={s.feedbackCard}>
+          <Text style={s.feedbackTitle}>Feedback</Text>
+          {result.feedback.map((note, i) => (
+            <View key={i} style={s.feedbackRow}>
               <View
-                style={[s.noteNumber, { backgroundColor: accent + '22' }]}
+                style={[s.feedbackNumber, { backgroundColor: accent + '22' }]}
               >
-                <Text style={[s.noteNumberText, { color: accent }]}>
+                <Text style={[s.feedbackNumberText, { color: accent }]}>
                   {i + 1}
                 </Text>
               </View>
-              <Text style={s.noteText}>{note}</Text>
+              <Text style={s.feedbackText}>{note}</Text>
             </View>
           ))}
         </View>
 
+        {/* CTAs */}
         <TouchableOpacity
           style={[s.primaryBtn, { backgroundColor: accent }]}
-          onPress={() => navigation.replace('ActiveSprint')}
+          onPress={() => navigation.navigate('Tabs', { screen: 'Leaderboard' })}
           accessibilityRole="button"
-          accessibilityLabel="Start next sprint"
+          accessibilityLabel="See leaderboard"
         >
-          <Text style={s.primaryBtnText}>Next Sprint</Text>
+          <Text style={s.primaryBtnText}>See Leaderboard</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={s.secondaryBtn}
-          onPress={() => navigation.navigate('Tabs')}
+          onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
           accessibilityRole="button"
-          accessibilityLabel="Go home"
+          accessibilityLabel="Back to hub"
         >
-          <Text style={s.secondaryBtnText}>Home</Text>
+          <Text style={s.secondaryBtnText}>Back to Hub</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -111,23 +174,21 @@ export default function SprintResultsScreen({ navigation }: Props) {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#0F0F13' },
   content: { padding: 24, gap: 16, alignItems: 'center' },
-  scoreSection: { alignItems: 'center', paddingVertical: 16 },
-  scoreLabel: { fontSize: 14, color: '#8888AA', marginBottom: 8 },
-  scoreRow: { flexDirection: 'row', alignItems: 'flex-end' },
-  scoreValue: { fontSize: 72, fontWeight: '900', lineHeight: 80 },
-  scoreMax: {
-    fontSize: 28,
-    color: '#8888AA',
-    fontWeight: '700',
-    paddingBottom: 12,
+  ringSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 220,
   },
-  xpBadge: {
+  ringOverlay: { position: 'absolute', alignItems: 'center' },
+  scoreValue: { fontSize: 56, fontWeight: '900', lineHeight: 64 },
+  scoreMax: { fontSize: 16, color: '#8888AA', fontWeight: '600' },
+  difficultyBadge: {
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderWidth: 1,
   },
-  xpBadgeText: { fontSize: 15, fontWeight: '700' },
+  difficultyText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
   cohortCard: {
     width: '100%',
     backgroundColor: '#1A1A2E',
@@ -148,7 +209,7 @@ const s = StyleSheet.create({
   cohortFill: { height: '100%', borderRadius: 4 },
   cohortLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   cohortLabelText: { fontSize: 11, color: '#8888AA' },
-  notesCard: {
+  feedbackCard: {
     width: '100%',
     backgroundColor: '#1A1A2E',
     borderRadius: 16,
@@ -157,9 +218,9 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#252540',
   },
-  notesTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
-  noteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  noteNumber: {
+  feedbackTitle: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  feedbackRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  feedbackNumber: {
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -167,8 +228,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  noteNumberText: { fontSize: 13, fontWeight: '800' },
-  noteText: { fontSize: 14, color: '#8888AA', flex: 1, lineHeight: 20 },
+  feedbackNumberText: { fontSize: 13, fontWeight: '800' },
+  feedbackText: { fontSize: 14, color: '#8888AA', flex: 1, lineHeight: 20 },
   primaryBtn: {
     width: '100%',
     borderRadius: 14,

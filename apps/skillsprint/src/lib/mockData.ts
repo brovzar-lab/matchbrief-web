@@ -34,7 +34,9 @@ export const DEMO_HOME = {
 };
 
 export const DEMO_SPRINT = {
+  id: 'demo-challenge-001',
   type: 'multiple_choice' as ChallengeType,
+  difficulty: 'Medium' as Difficulty,
   question: 'What is the time complexity of binary search?',
   options: ['O(1)', 'O(n)', 'O(log n)', 'O(n log n)'],
   correctIndex: 2,
@@ -53,21 +55,21 @@ export const DEMO_RESULTS = {
 
 export const DEMO_LEADERBOARD_GLOBAL: LeaderEntry[] = [
   { rank: 1, username: 'JamieLee', score: 3800, trackId: 'coding', isCurrentUser: false },
-  { rank: 2, username: 'RiverC', score: 3540, trackId: 'leadership', isCurrentUser: false },
+  { rank: 2, username: 'RiverC', score: 3540, trackId: 'critical_thinking', isCurrentUser: false },
   { rank: 3, username: 'SophieM', score: 3210, trackId: 'design', isCurrentUser: false },
   { rank: 4, username: 'Demo User', score: 1240, trackId: 'coding', isCurrentUser: true },
-  { rank: 5, username: 'TylerQ', score: 1190, trackId: 'marketing', isCurrentUser: false },
+  { rank: 5, username: 'TylerQ', score: 1190, trackId: 'writing', isCurrentUser: false },
   { rank: 6, username: 'AnaK', score: 1050, trackId: 'coding', isCurrentUser: false },
   { rank: 7, username: 'BenV', score: 980, trackId: 'design', isCurrentUser: false },
-  { rank: 8, username: 'MelanieP', score: 890, trackId: 'leadership', isCurrentUser: false },
-  { rank: 9, username: 'OliverT', score: 740, trackId: 'marketing', isCurrentUser: false },
+  { rank: 8, username: 'MelanieP', score: 890, trackId: 'critical_thinking', isCurrentUser: false },
+  { rank: 9, username: 'OliverT', score: 740, trackId: 'writing', isCurrentUser: false },
   { rank: 10, username: 'ZoeW', score: 610, trackId: 'coding', isCurrentUser: false },
 ];
 
 export const DEMO_LEADERBOARD_FRIENDS: LeaderEntry[] = [
   { rank: 1, username: 'JamieLee', score: 3800, trackId: 'coding', isCurrentUser: false },
   { rank: 2, username: 'Demo User', score: 1240, trackId: 'coding', isCurrentUser: true },
-  { rank: 3, username: 'TylerQ', score: 1190, trackId: 'marketing', isCurrentUser: false },
+  { rank: 3, username: 'TylerQ', score: 1190, trackId: 'writing', isCurrentUser: false },
   { rank: 4, username: 'BenV', score: 980, trackId: 'design', isCurrentUser: false },
   { rank: 5, username: 'ZoeW', score: 610, trackId: 'coding', isCurrentUser: false },
 ];

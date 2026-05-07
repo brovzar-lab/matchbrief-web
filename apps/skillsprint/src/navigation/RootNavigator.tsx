@@ -1,9 +1,14 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { TRACKS } from '../lib/config';
+import { NavigatorScreenParams } from '@react-navigation/native';
+import { TRACKS, isDemoMode } from '../lib/config';
 import { useStore } from '../lib/store';
+import type { SubmitResult } from '../hooks/useSubmitChallenge';
+import type { Difficulty } from '../lib/mockData';
+import AuthScreen from '../screens/AuthScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import RivalMatchupScreen from '../screens/RivalMatchupScreen';
@@ -20,9 +25,11 @@ export type TabParamList = {
 };
 
 export type RootStackParamList = {
-  Tabs: undefined;
+  Auth: undefined;
+  Onboarding: undefined;
+  Tabs: NavigatorScreenParams<TabParamList> | undefined;
   ActiveSprint: undefined;
-  SprintResults: undefined;
+  SprintResults: { result: SubmitResult; difficulty: Difficulty };
   Paywall: undefined;
 };
 
@@ -30,8 +37,8 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function TabNavigator() {
-  const track = useStore((s) => s.track);
-  const accent = TRACKS[track].accent;
+  const selectedTrack = useStore((s) => s.selectedTrack) ?? 'coding';
+  const accent = TRACKS[selectedTrack].accent;
 
   return (
     <Tab.Navigator
@@ -58,7 +65,7 @@ function TabNavigator() {
         options={{
           tabBarLabel: 'Ranks',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 18 }}>📊</Text>
+            <Text style={{ color, fontSize: 18 }}>🏆</Text>
           ),
         }}
       />
@@ -87,27 +94,41 @@ function TabNavigator() {
 }
 
 export function RootNavigator() {
+  const uid = useStore((s) => s.uid);
+  const isAuthLoading = useStore((s) => s.isAuthLoading);
+  const hasOnboarded = useStore((s) => s.hasOnboarded);
+
+  if (!isDemoMode && isAuthLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0F0F13', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color="#3B82F6" size="large" />
+      </View>
+    );
+  }
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Tabs" component={TabNavigator} />
-      <Stack.Screen
-        name="ActiveSprint"
-        component={ActiveSprintScreen}
-        options={{ contentStyle: { backgroundColor: '#0F0F13' } }}
-      />
-      <Stack.Screen
-        name="SprintResults"
-        component={SprintResultsScreen}
-        options={{ contentStyle: { backgroundColor: '#0F0F13' } }}
-      />
-      <Stack.Screen
-        name="Paywall"
-        component={PaywallScreen}
-        options={{
-          presentation: 'modal',
-          contentStyle: { backgroundColor: '#0F0F13' },
-        }}
-      />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: '#0F0F13' },
+      }}
+    >
+      {!uid ? (
+        <Stack.Screen name="Auth" component={AuthScreen} />
+      ) : !hasOnboarded ? (
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      ) : (
+        <>
+          <Stack.Screen name="Tabs" component={TabNavigator} />
+          <Stack.Screen name="ActiveSprint" component={ActiveSprintScreen} />
+          <Stack.Screen name="SprintResults" component={SprintResultsScreen} />
+          <Stack.Screen
+            name="Paywall"
+            component={PaywallScreen}
+            options={{ presentation: 'modal' }}
+          />
+        </>
+      )}
     </Stack.Navigator>
   );
 }
