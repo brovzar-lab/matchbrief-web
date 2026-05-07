@@ -5,48 +5,151 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DemoBanner } from '../components/DemoBanner';
+import { TimerRing } from '../components/challenges/TimerRing';
+import { MultipleChoiceChallengeRenderer } from '../components/challenges/MultipleChoiceChallenge';
+import { FillInBlankChallengeRenderer } from '../components/challenges/FillInBlankChallenge';
+import { CodeReadingChallengeRenderer } from '../components/challenges/CodeReadingChallenge';
+import { WritingPromptChallengeRenderer } from '../components/challenges/WritingPromptChallenge';
+import { DesignCritiqueChallengeRenderer } from '../components/challenges/DesignCritiqueChallenge';
 import { isDemoMode, TRACKS } from '../lib/config';
+import type { TrackId } from '../lib/config';
 import { useStore } from '../lib/store';
-import { DEMO_SPRINT } from '../lib/mockData';
 import { useSubmitChallenge } from '../hooks/useSubmitChallenge';
+import {
+  MULTIPLE_CHOICE_FIXTURE,
+  FILL_IN_BLANK_FIXTURE,
+  CODE_READING_FIXTURE,
+  WRITING_PROMPT_FIXTURE,
+  DESIGN_CRITIQUE_FIXTURE,
+} from '../fixtures/challenges';
+import type { Challenge } from '../types/challenges';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveSprint'>;
 
-const RADIUS = 80;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const TIMER_SECONDS = 60;
+const TIMER_SECONDS = 600;
+
+function getDemoChallenge(trackId: TrackId): Challenge {
+  switch (trackId) {
+    case 'coding':
+      return FILL_IN_BLANK_FIXTURE;
+    case 'writing':
+      return WRITING_PROMPT_FIXTURE;
+    case 'design':
+      return DESIGN_CRITIQUE_FIXTURE;
+    case 'critical_thinking':
+      return CODE_READING_FIXTURE;
+    default:
+      return MULTIPLE_CHOICE_FIXTURE;
+  }
+}
+
+function isAnswerValid(challenge: Challenge, answer: string | string[] | null): boolean {
+  if (answer === null) return false;
+  switch (challenge.type) {
+    case 'fill_in_blank':
+      return typeof answer === 'string' && answer.trim().length > 0;
+    case 'multiple_choice':
+    case 'code_reading':
+      return typeof answer === 'string' && answer.length > 0;
+    case 'writing_prompt': {
+      if (typeof answer !== 'string') return false;
+      const words = answer.trim() === '' ? 0 : answer.trim().split(/\s+/).length;
+      return words >= challenge.content.minWords;
+    }
+    case 'design_critique':
+      return Array.isArray(answer) && answer.every((v) => v.trim().length > 0);
+  }
+}
+
+function renderChallenge(
+  challenge: Challenge,
+  accent: string,
+  onAnswerChange: (a: string | string[]) => void,
+  disabled: boolean,
+): React.ReactElement {
+  switch (challenge.type) {
+    case 'multiple_choice':
+      return (
+        <MultipleChoiceChallengeRenderer
+          challenge={challenge}
+          accent={accent}
+          onAnswerChange={onAnswerChange}
+          disabled={disabled}
+        />
+      );
+    case 'fill_in_blank':
+      return (
+        <FillInBlankChallengeRenderer
+          challenge={challenge}
+          accent={accent}
+          onAnswerChange={onAnswerChange}
+          disabled={disabled}
+        />
+      );
+    case 'code_reading':
+      return (
+        <CodeReadingChallengeRenderer
+          challenge={challenge}
+          accent={accent}
+          onAnswerChange={onAnswerChange}
+          disabled={disabled}
+        />
+      );
+    case 'writing_prompt':
+      return (
+        <WritingPromptChallengeRenderer
+          challenge={challenge}
+          accent={accent}
+          onAnswerChange={onAnswerChange}
+          disabled={disabled}
+        />
+      );
+    case 'design_critique':
+      return (
+        <DesignCritiqueChallengeRenderer
+          challenge={challenge}
+          accent={accent}
+          onAnswerChange={onAnswerChange}
+          disabled={disabled}
+        />
+      );
+  }
+}
 
 export default function ActiveSprintScreen({ navigation }: Props) {
   const selectedTrack = useStore((s) => s.selectedTrack) ?? 'coding';
   const accent = TRACKS[selectedTrack].accent;
+  const challenge = getDemoChallenge(selectedTrack);
+
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const data = DEMO_SPRINT;
+  const [answer, setAnswer] = useState<string | string[] | null>(null);
 
   const startedAt = useRef(new Date());
-  const selectedOptionRef = useRef<number | null>(null);
+  const answerRef = useRef<string | string[] | null>(null);
   const hasSubmitted = useRef(false);
 
   const { state: submitState, result, error, submit, reset } = useSubmitChallenge();
-
-  // Keep a stable ref to the latest submit so the timer effect never restarts
   const submitRef = useRef(submit);
   submitRef.current = submit;
 
-  // Navigate to results when scoring completes
   useEffect(() => {
     if (submitState === 'done' && result) {
-      navigation.replace('SprintResults', { result, difficulty: data.difficulty });
+      navigation.replace('SprintResults', {
+        result,
+        difficulty: challenge.difficulty,
+      });
     }
-  }, [submitState, result, navigation, data.difficulty]);
+  }, [submitState, result, navigation, challenge.difficulty]);
 
-  // Countdown timer — auto-submits when it hits zero. Runs once on mount.
+  // Countdown — auto-submits at zero. Runs once on mount.
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeLeft((t) => {
@@ -54,13 +157,10 @@ export default function ActiveSprintScreen({ navigation }: Props) {
           clearInterval(interval);
           if (!hasSubmitted.current) {
             hasSubmitted.current = true;
-            const answer =
-              selectedOptionRef.current !== null
-                ? data.options[selectedOptionRef.current]
-                : '';
+            const a = answerRef.current ?? '';
             void submitRef.current({
-              challengeId: data.id,
-              answer,
+              challengeId: challenge.id,
+              answer: a,
               startedAt: startedAt.current,
             });
           }
@@ -73,20 +173,17 @@ export default function ActiveSprintScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const progress = timeLeft / TIMER_SECONDS;
-  const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
-
-  function handleOptionSelect(i: number) {
-    setSelectedOption(i);
-    selectedOptionRef.current = i;
+  function handleAnswerChange(a: string | string[]) {
+    setAnswer(a);
+    answerRef.current = a;
   }
 
   function handleSubmit() {
-    if (hasSubmitted.current || selectedOption === null) return;
+    if (hasSubmitted.current || !isAnswerValid(challenge, answer)) return;
     hasSubmitted.current = true;
     void submit({
-      challengeId: data.id,
-      answer: data.options[selectedOption],
+      challengeId: challenge.id,
+      answer: answer ?? '',
       startedAt: startedAt.current,
     });
   }
@@ -97,186 +194,92 @@ export default function ActiveSprintScreen({ navigation }: Props) {
   }
 
   const isSubmitting = submitState === 'submitting' || submitState === 'scoring';
+  const canSubmit = isAnswerValid(challenge, answer) && !isSubmitting;
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-      {isDemoMode && <DemoBanner />}
+    <KeyboardAvoidingView
+      style={s.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+        {isDemoMode && <DemoBanner />}
 
-      {/* Timer ring */}
-      <View style={s.timerSection}>
-        <Svg width={200} height={200} viewBox="0 0 200 200">
-          <Circle
-            cx={100}
-            cy={100}
-            r={RADIUS}
-            stroke="#252540"
-            strokeWidth={12}
-            fill="none"
-          />
-          <Circle
-            cx={100}
-            cy={100}
-            r={RADIUS}
-            stroke={accent}
-            strokeWidth={12}
-            fill="none"
-            strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            rotation="-90"
-            origin="100, 100"
-          />
-        </Svg>
-        <View style={s.timerOverlay}>
-          <Text style={[s.timerDigits, { color: accent }]}>{timeLeft}</Text>
-          <Text style={s.timerLabel}>sec</Text>
-        </View>
-      </View>
+        <TimerRing
+          secondsLeft={timeLeft}
+          totalSeconds={TIMER_SECONDS}
+          accent={accent}
+        />
 
-      {/* Challenge text */}
-      <View style={s.challengeSection}>
-        <Text style={s.questionText}>{data.question}</Text>
-      </View>
-
-      {/* Answer options */}
-      <View style={s.optionsSection}>
-        {data.options.map((opt, i) => {
-          const isSelected = selectedOption === i;
-          return (
-            <TouchableOpacity
-              key={i}
-              style={[
-                s.optionBtn,
-                isSelected && {
-                  borderColor: accent,
-                  backgroundColor: accent + '22',
-                },
-              ]}
-              onPress={() => handleOptionSelect(i)}
-              disabled={isSubmitting || submitState === 'error'}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: isSelected }}
-              accessibilityLabel={opt}
-            >
-              <View
-                style={[
-                  s.optionLetter,
-                  isSelected && { backgroundColor: accent },
-                ]}
-              >
-                <Text
-                  style={[
-                    s.optionLetterText,
-                    isSelected && { color: '#0F0F13' },
-                  ]}
-                >
-                  {String.fromCharCode(65 + i)}
-                </Text>
-              </View>
-              <Text
-                style={[s.optionText, isSelected && { color: '#FFFFFF' }]}
-              >
-                {opt}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-
-        <TouchableOpacity
-          style={[
-            s.submitBtn,
-            {
-              backgroundColor:
-                selectedOption !== null && !isSubmitting ? accent : '#252540',
-            },
-          ]}
-          onPress={handleSubmit}
-          disabled={selectedOption === null || isSubmitting}
-          accessibilityRole="button"
-          accessibilityLabel="Submit answer"
+        <ScrollView
+          style={s.scrollArea}
+          contentContainerStyle={s.cardContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text
-            style={[
-              s.submitBtnText,
-              { color: selectedOption !== null && !isSubmitting ? '#0F0F13' : '#8888AA' },
-            ]}
-          >
-            Submit
-          </Text>
-        </TouchableOpacity>
-      </View>
+          {renderChallenge(challenge, accent, handleAnswerChange, isSubmitting)}
+        </ScrollView>
 
-      {/* Scoring overlay */}
-      {isSubmitting && (
-        <View style={s.overlay}>
-          <ActivityIndicator size="large" color={accent} />
-          <Text style={s.overlayText}>Scoring…</Text>
-        </View>
-      )}
-
-      {/* Error overlay */}
-      {submitState === 'error' && (
-        <View style={s.overlay}>
-          <Text style={s.errorText}>{error}</Text>
+        <View style={s.footer}>
           <TouchableOpacity
-            style={[s.retryBtn, { backgroundColor: accent }]}
-            onPress={handleRetry}
+            style={[
+              s.submitBtn,
+              { backgroundColor: canSubmit ? accent : '#252540' },
+            ]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
             accessibilityRole="button"
-            accessibilityLabel="Retry submission"
+            accessibilityLabel="Submit answer"
+            accessibilityState={{ disabled: !canSubmit }}
           >
-            <Text style={s.retryBtnText}>Retry</Text>
+            <Text
+              style={[
+                s.submitBtnText,
+                { color: canSubmit ? '#0F0F13' : '#8888AA' },
+              ]}
+            >
+              Submit
+            </Text>
           </TouchableOpacity>
         </View>
-      )}
-    </SafeAreaView>
+
+        {isSubmitting && (
+          <View style={s.overlay}>
+            <ActivityIndicator size="large" color={accent} />
+            <Text style={s.overlayText}>Scoring…</Text>
+          </View>
+        )}
+
+        {submitState === 'error' && (
+          <View style={s.overlay}>
+            <Text style={s.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={[s.retryBtn, { backgroundColor: accent }]}
+              onPress={handleRetry}
+              accessibilityRole="button"
+              accessibilityLabel="Retry submission"
+            >
+              <Text style={s.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
+  flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: '#0F0F13' },
-  timerSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 16,
-    height: 220,
+  scrollArea: { flex: 1 },
+  cardContent: { padding: 24, paddingBottom: 8, gap: 8 },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+    paddingTop: 8,
   },
-  timerOverlay: { position: 'absolute', alignItems: 'center' },
-  timerDigits: { fontSize: 48, fontWeight: '800' },
-  timerLabel: { fontSize: 14, color: '#8888AA', marginTop: -4 },
-  challengeSection: { paddingHorizontal: 24, paddingVertical: 12 },
-  questionText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 28,
-  },
-  optionsSection: { paddingHorizontal: 24, gap: 10, flex: 1 },
-  optionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A2E',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: '#252540',
-    gap: 12,
-  },
-  optionLetter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#252540',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  optionLetterText: { fontSize: 13, fontWeight: '700', color: '#8888AA' },
-  optionText: { fontSize: 15, color: '#8888AA', flex: 1 },
   submitBtn: {
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 8,
   },
   submitBtnText: { fontSize: 16, fontWeight: '700' },
   overlay: {
