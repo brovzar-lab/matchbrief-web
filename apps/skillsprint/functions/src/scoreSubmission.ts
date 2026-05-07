@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import type { ChallengeType } from './types';
 
@@ -193,5 +193,9 @@ async function writeSubmission(
 async function markSprintCompleted(uid: string): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
   const sprintRef = db.doc(`sprints/${uid}/daily/${today}`);
-  await sprintRef.update({ status: 'completed' });
+  const userRef = db.doc(`users/${uid}`);
+  await Promise.all([
+    sprintRef.update({ status: 'completed' }),
+    userRef.set({ monthlySprintCount: FieldValue.increment(1) }, { merge: true }),
+  ]);
 }
