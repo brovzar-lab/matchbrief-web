@@ -6,18 +6,51 @@ import {
   StyleSheet,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithCredential,
+  updateProfile,
+} from 'firebase/auth';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { ResponseType } from 'expo-auth-session';
 import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT } from '../lib/config';
 import { isDemoMode } from '../lib/config';
 import { DEMO_USER } from '../lib/mockData';
-import { useStore } from '../lib/store';
+import { useStore, createUserDoc } from '../lib/store';
+import { auth } from '../lib/firebase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const setUser = useStore((s) => s.setUser);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isSignUp, setIsSignUp] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    responseType: ResponseType.IdToken,
+    scopes: ['openid', 'profile', 'email'],
+  });
+
+  React.useEffect(() => {
+    if (googleResponse?.type !== 'success') return;
+    const idToken = googleResponse.params.id_token;
+    if (!idToken || !auth) return;
+    const credential = GoogleAuthProvider.credential(idToken);
+    setIsLoading(true);
+    signInWithCredential(auth, credential)
+      .catch((err: Error) => Alert.alert('Google Sign-In Failed', err.message))
+      .finally(() => setIsLoading(false));
+  }, [googleResponse]);
 
   function handleDemoLogin() {
     setUser(DEMO_USER);
@@ -28,8 +61,30 @@ export default function AuthScreen() {
       Alert.alert('Demo Mode', 'Sign in is disabled in demo mode. Use "Continue as Demo User".');
       return;
     }
-    // TODO: wire Firebase Auth email/password
-    Alert.alert('Coming soon', 'Firebase Auth integration pending.');
+    if (!auth) return;
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      Alert.alert('Missing fields', 'Please enter your email and password.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (isSignUp) {
+        const { user } = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+        const displayName = trimmedEmail.split('@')[0] ?? null;
+        await updateProfile(user, { displayName });
+        await createUserDoc(user.uid, trimmedEmail, displayName);
+      } else {
+        await signInWithEmailAndPassword(auth, trimmedEmail, password);
+      }
+      // onAuthStateChanged in initAuthListener will update the store
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Authentication failed.';
+      Alert.alert('Error', message);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function handleGoogleSignIn() {
@@ -37,8 +92,7 @@ export default function AuthScreen() {
       Alert.alert('Demo Mode', 'Google sign-in is disabled in demo mode.');
       return;
     }
-    // TODO: wire Firebase Auth Google provider
-    Alert.alert('Coming soon', 'Google sign-in integration pending.');
+    await promptGoogleAsync();
   }
 
   return (
@@ -59,6 +113,7 @@ export default function AuthScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!isLoading}
           />
           <TextInput
             style={styles.input}
@@ -67,15 +122,28 @@ export default function AuthScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            editable={!isLoading}
           />
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleEmailAuth}>
-            <Text style={styles.primaryBtnText}>
-              {isSignUp ? 'Create Account' : 'Sign In'}
-            </Text>
+          <TouchableOpacity
+            style={[styles.primaryBtn, isLoading && { opacity: 0.6 }]}
+            onPress={handleEmailAuth}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {isSignUp ? 'Create Account' : 'Sign In'}
+              </Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handleGoogleSignIn}>
+          <TouchableOpacity
+            style={[styles.secondaryBtn, isLoading && { opacity: 0.6 }]}
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+          >
             <Text style={styles.secondaryBtnText}>Continue with Google</Text>
           </TouchableOpacity>
 

@@ -11,8 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
-import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, SUCCESS, WARNING, DANGER, isDemoMode } from '../lib/config';
+import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, SUCCESS, WARNING, isDemoMode } from '../lib/config';
 import { useStore } from '../lib/store';
+import { subscribeLegacies, deleteLegacy as deleteFirestoreLegacy } from '../lib/firestoreService';
 import { DemoBanner } from '../components/DemoBanner';
 import type { Legacy } from '../lib/types';
 
@@ -30,7 +31,13 @@ const TYPE_ICON: Record<Legacy['type'], string> = {
   video: '🎥',
 };
 
-function LegacyCard({ legacy }: { legacy: Legacy }) {
+function LegacyCard({
+  legacy,
+  onDelete,
+}: {
+  legacy: Legacy;
+  onDelete: (id: string) => void;
+}) {
   const nav = useNavigation<Nav>();
   const status = STATUS_CONFIG[legacy.status];
 
@@ -40,8 +47,24 @@ function LegacyCard({ legacy }: { legacy: Legacy }) {
     else nav.navigate('ComposeVideo', { legacyId: legacy.id });
   }
 
+  function handleLongPress() {
+    Alert.alert(
+      'Delete Legacy',
+      `Delete "${legacy.title}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => onDelete(legacy.id) },
+      ]
+    );
+  }
+
   return (
-    <TouchableOpacity style={styles.card} onPress={handlePress}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={handlePress}
+      onLongPress={handleLongPress}
+      delayLongPress={400}
+    >
       <View style={styles.cardLeft}>
         <Text style={styles.typeIcon}>{TYPE_ICON[legacy.type]}</Text>
       </View>
@@ -65,8 +88,29 @@ function LegacyCard({ legacy }: { legacy: Legacy }) {
 
 export default function HomeScreen() {
   const nav = useNavigation<Nav>();
-  const legacies = useStore((s) => s.legacies);
   const user = useStore((s) => s.user);
+  const legacies = useStore((s) => s.legacies);
+  const setLegacies = useStore((s) => s.setLegacies);
+  const deleteFromStore = useStore((s) => s.deleteLegacy);
+
+  React.useEffect(() => {
+    if (isDemoMode || !user) return;
+    const unsubscribe = subscribeLegacies(user.uid, setLegacies);
+    return unsubscribe;
+  }, [user?.uid]);
+
+  async function handleDelete(id: string) {
+    if (isDemoMode || !user) {
+      deleteFromStore(id);
+      return;
+    }
+    try {
+      await deleteFirestoreLegacy(user.uid, id);
+      // real-time listener will remove it from the store automatically
+    } catch {
+      Alert.alert('Error', 'Failed to delete legacy. Please try again.');
+    }
+  }
 
   function showComposeOptions() {
     Alert.alert('New Legacy', 'Choose a format', [
@@ -97,7 +141,9 @@ export default function HomeScreen() {
       <FlatList
         data={legacies}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <LegacyCard legacy={item} />}
+        renderItem={({ item }) => (
+          <LegacyCard legacy={item} onDelete={handleDelete} />
+        )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>

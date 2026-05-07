@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { isDemoMode, BG, BORDER, ACCENT, SUBTEXT } from '../lib/config';
-import { useStore } from '../lib/store';
+import { useStore, initAuthListener } from '../lib/store';
 
 import AuthScreen from '../screens/AuthScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -70,6 +70,11 @@ function TabNavigator() {
 export function RootNavigator() {
   const user = useStore((s) => s.user);
   const isAuthLoading = useStore((s) => s.isAuthLoading);
+
+  React.useEffect(() => {
+    const unsubscribe = initAuthListener();
+    return unsubscribe;
+  }, []);
 
   if (!isDemoMode && isAuthLoading) {
     return (

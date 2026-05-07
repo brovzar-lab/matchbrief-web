@@ -1,7 +1,10 @@
 import { create } from 'zustand';
-import type { AppUser, Legacy, Recipient } from './types';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import type { AppUser, Legacy, Recipient, UserSubscription } from './types';
 import { DEMO_USER, DEMO_LEGACIES, DEMO_RECIPIENTS } from './mockData';
 import { isDemoMode } from './config';
+import { auth, db } from './firebase';
 
 interface AppState {
   // Auth
@@ -48,3 +51,59 @@ export const useStore = create<AppState>((set) => ({
   removeRecipient: (id) =>
     set((s) => ({ recipients: s.recipients.filter((r) => r.id !== id) })),
 }));
+
+export function initAuthListener(): () => void {
+  if (isDemoMode || !auth || !db) return () => {};
+
+  return onAuthStateChanged(auth, async (firebaseUser) => {
+    const { setUser, setAuthLoading } = useStore.getState();
+
+    if (firebaseUser) {
+      let subscription: UserSubscription = { tier: 'free', expiresAt: null, revenueCatId: null };
+      try {
+        const snap = await getDoc(doc(db!, `users/${firebaseUser.uid}`));
+        if (snap.exists()) {
+          const data = snap.data();
+          const sub = data.subscription as Record<string, unknown> | undefined;
+          subscription = {
+            tier: (sub?.tier as UserSubscription['tier']) ?? 'free',
+            expiresAt:
+              sub?.expiresAt instanceof Timestamp ? sub.expiresAt.toDate() : null,
+            revenueCatId: (sub?.revenueCatId as string | null) ?? null,
+          };
+        }
+      } catch {
+        // user doc may not exist yet on first sign-up
+      }
+
+      setUser({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? '',
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        subscription,
+      });
+    } else {
+      setUser(null);
+    }
+
+    setAuthLoading(false);
+  });
+}
+
+export async function createUserDoc(
+  uid: string,
+  email: string,
+  displayName: string | null
+): Promise<void> {
+  if (isDemoMode || !db) return;
+  const ref = doc(db, `users/${uid}`);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      email,
+      displayName,
+      subscription: { tier: 'free', expiresAt: null, revenueCatId: null },
+    });
+  }
+}

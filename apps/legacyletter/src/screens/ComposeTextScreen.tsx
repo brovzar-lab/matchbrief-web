@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-n
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import { BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, isDemoMode, FREE_LEGACY_LIMIT } from '../lib/config';
 import { useStore } from '../lib/store';
+import { createTextLegacy, updateLegacy as updateFirestoreLegacy } from '../lib/firestoreService';
 import { DemoBanner } from '../components/DemoBanner';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ComposeText'>;
@@ -28,7 +29,7 @@ export default function ComposeTextScreen() {
 
   const legacies = useStore((s) => s.legacies);
   const addLegacy = useStore((s) => s.addLegacy);
-  const updateLegacy = useStore((s) => s.updateLegacy);
+  const updateLegacyInStore = useStore((s) => s.updateLegacy);
   const user = useStore((s) => s.user);
 
   const existing = legacyId ? legacies.find((l) => l.id === legacyId) : undefined;
@@ -56,14 +57,13 @@ export default function ComposeTextScreen() {
     }
 
     if (isDemoMode) {
-      Alert.alert('Demo Mode', 'Changes are not saved in demo mode.');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
+      // Demo mode: update local store only
       if (existing) {
-        updateLegacy(existing.id, { title: title.trim(), content, status: asDraft ? 'draft' : existing.status });
+        updateLegacyInStore(existing.id, {
+          title: title.trim(),
+          content,
+          status: asDraft ? 'draft' : existing.status,
+        });
       } else {
         addLegacy({
           id: Date.now().toString(),
@@ -77,6 +77,29 @@ export default function ComposeTextScreen() {
         });
       }
       nav.goBack();
+      return;
+    }
+
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      if (existing) {
+        await updateFirestoreLegacy(user.uid, existing.id, {
+          title: title.trim(),
+          content,
+          status: asDraft ? 'draft' : existing.status,
+        });
+        // real-time listener in HomeScreen will sync the update
+      } else {
+        const newLegacy = await createTextLegacy(user.uid, {
+          title: title.trim(),
+          content,
+        });
+        // optimistically add to store; listener will confirm with Firestore id
+        addLegacy(newLegacy);
+      }
+      nav.goBack();
     } catch {
       Alert.alert('Error', 'Failed to save. Please try again.');
     } finally {
@@ -85,11 +108,15 @@ export default function ComposeTextScreen() {
   }
 
   function handleSchedule() {
+    if (!existing) {
+      Alert.alert('Save first', 'Save this legacy before setting a delivery date.');
+      return;
+    }
     if (isDemoMode) {
       Alert.alert('Demo Mode', 'In the real app, this opens delivery settings.');
       return;
     }
-    // TODO: navigate to DeliverySettings with current legacy
+    nav.navigate('DeliverySettings', { legacy: existing });
   }
 
   return (
@@ -97,7 +124,7 @@ export default function ComposeTextScreen() {
       <DemoBanner />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => nav.goBack()}>
