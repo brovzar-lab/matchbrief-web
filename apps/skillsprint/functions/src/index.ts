@@ -11,3 +11,5 @@ export { resetMonthlySprintCount } from './resetMonthlySprintCount';
 export { startSprint } from './startSprint';
 export { revenueCatWebhook } from './revenueCatWebhook';
 export { generateSkillReportCard } from './generateSkillReportCard';
+export { onSubmissionComplete } from './onSubmissionComplete';
+export { weeklyReset, rivalFinalize, weeklyLeaderboardSnapshot } from './rivalScheduler';
