@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "legacies",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "deliveryDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "legacies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "legacies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

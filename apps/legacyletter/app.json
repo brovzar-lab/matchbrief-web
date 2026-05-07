@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "LegacyLetter",
+    "slug": "legacyletter",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0D1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lemaa.legacyletter",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "LegacyLetter needs microphone access to record voice memos.",
+        "NSCameraUsageDescription": "LegacyLetter needs camera access to record video messages.",
+        "NSPhotoLibraryUsageDescription": "LegacyLetter needs photo library access to attach media."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0D1117"
+      },
+      "package": "com.lemaa.legacyletter",
+      "permissions": [
+        "INTERNET",
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-apple-authentication",
+      "expo-av",
+      "expo-camera",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow LegacyLetter to access your photos.",
+          "cameraPermission": "Allow LegacyLetter to use the camera."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
