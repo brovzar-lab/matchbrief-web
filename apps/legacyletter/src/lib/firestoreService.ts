@@ -91,6 +91,36 @@ export function subscribeLegacies(
   });
 }
 
+export async function createVoiceLegacy(
+  uid: string,
+  payload: { title: string; storageRef: string; durationSeconds: number }
+): Promise<Legacy> {
+  if (isDemoMode) throw new Error('createVoiceLegacy: unavailable in demo mode');
+  const docRef = await addDoc(legaciesCol(uid), {
+    type: 'voice',
+    title: payload.title,
+    content: '',
+    storageRef: payload.storageRef,
+    durationSeconds: payload.durationSeconds,
+    deliveryDate: null,
+    recipients: [],
+    status: 'draft',
+    createdAt: serverTimestamp(),
+  });
+  return {
+    id: docRef.id,
+    type: 'voice',
+    title: payload.title,
+    content: '',
+    storageRef: payload.storageRef,
+    durationSeconds: payload.durationSeconds,
+    deliveryDate: null,
+    recipients: [],
+    status: 'draft',
+    createdAt: new Date(),
+  };
+}
+
 export async function fetchUserSubscription(uid: string): Promise<UserSubscription> {
   if (isDemoMode) throw new Error('fetchUserSubscription: unavailable in demo mode');
   const snap = await getDoc(doc(db!, `users/${uid}`));
