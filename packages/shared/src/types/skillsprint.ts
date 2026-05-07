@@ -76,3 +76,41 @@ export interface Submission {
   scoredBy: "deterministic" | "llm";
   cohortPercentile: number;
 }
+
+export interface UserProfile {
+  uid: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastCompletedDate: string; // YYYY-MM-DD
+  weeklySkipsRemaining: number; // resets Monday, max 1
+  totalXP: number;
+  level: number;
+  track: "coding" | "design" | "writing" | "critical_thinking";
+}
+
+export interface RivalMatchup {
+  id: string;
+  userA: string;
+  userB: string;
+  weekStart: string; // YYYY-MM-DD, Monday
+  challengeId: string;
+  scoreA?: number;
+  scoreB?: number;
+  winner: "userA" | "userB" | "tie" | null;
+  status: "pending" | "active" | "complete";
+}
+
+export interface LeaderboardEntry {
+  uid: string;
+  username: string;
+  totalXP: number;
+  level: number;
+  track: "coding" | "design" | "writing" | "critical_thinking";
+  rank: number;
+}
+
+export interface LeaderboardSnapshot {
+  weekStart: string; // YYYY-MM-DD
+  entries: LeaderboardEntry[];
+  generatedAt: string; // ISO timestamp
+}

@@ -1,0 +1,38 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "rivals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "weekStart", "order": "ASCENDING" },
+        { "fieldPath": "userA", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rivals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "weekStart", "order": "ASCENDING" },
+        { "fieldPath": "userB", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rivals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "weekStart", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "leaderboardSnapshots",
+      "fieldPath": "weekStart",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
+      ]
+    }
+  ]
+}
