@@ -7,3 +7,7 @@ if (getApps().length === 0) {
 export { assignDailySprints } from './assignDailySprints';
 export { scoreSubmission } from './scoreSubmission';
 export { scoreSubmissionLLM } from './scoreSubmissionLLM';
+export { resetMonthlySprintCount } from './resetMonthlySprintCount';
+export { startSprint } from './startSprint';
+export { revenueCatWebhook } from './revenueCatWebhook';
+export { generateSkillReportCard } from './generateSkillReportCard';

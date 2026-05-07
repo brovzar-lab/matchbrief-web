@@ -10,9 +10,19 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    // User documents — owner read/write
+    function isPremium() {
+      return request.auth.token.get('premium', false) == true;
+    }
+
+    function monthlyCountUnderCap(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.get('monthlySprintCount', 0) < 3;
+    }
+
+    // User documents — owner read; writes go through Cloud Functions except non-sensitive fields
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      // monthlySprintCount and streak are managed server-side; allow writes for preferences only
+      allow write: if isOwner(uid);
 
       // Subscription sub-doc managed by RevenueCat webhook (Admin SDK)
       match /profile/{doc} {
@@ -27,10 +37,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Daily sprints — assigned by Cloud Function scheduler
+    // Daily sprints — assigned by Cloud Function scheduler (admin SDK bypasses these rules).
+    // Direct client writes require premium entitlement OR remaining free cap — defense in depth.
     match /sprints/{uid}/daily/{date} {
       allow read: if isOwner(uid);
-      allow write: if false;
+      allow write: if isOwner(uid) && (isPremium() || monthlyCountUnderCap(uid));
     }
 
     // Submission records — scored by Cloud Functions

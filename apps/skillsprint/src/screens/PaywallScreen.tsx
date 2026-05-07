@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DemoBanner } from '../components/DemoBanner';
-import { isDemoMode, TRACKS } from '../lib/config';
+import { isDemoMode, SPRINT_LIMIT_FREE, TRACKS } from '../lib/config';
 import { useStore } from '../lib/store';
+import {
+  purchaseMonthly,
+  purchaseAnnual,
+  restorePurchases,
+} from '../lib/purchases';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Paywall'>;
@@ -26,20 +32,61 @@ const FEATURES: FeatureRow[] = [
   { label: 'Rival Matchups', free: false, premium: true },
   { label: 'Detailed Analytics', free: false, premium: true },
   { label: 'Export Progress', free: false, premium: true },
-  { label: '3 Sprints / Day', free: true, premium: false },
+  { label: 'Skill Report Card', free: false, premium: true },
+  { label: `${SPRINT_LIMIT_FREE} Sprints / Month`, free: true, premium: false },
 ];
 
 export default function PaywallScreen({ navigation }: Props) {
   const track = useStore((s) => s.selectedTrack) ?? 'coding';
+  const setIsPremium = useStore((s) => s.setIsPremium);
   const showToast = useStore((s) => s.showToast);
   const accent = TRACKS[track].accent;
 
-  function handleSubscribe(_plan: 'monthly' | 'annual') {
+  const [loading, setLoading] = useState<'monthly' | 'annual' | 'restore' | null>(null);
+
+  async function handleSubscribe(plan: 'monthly' | 'annual') {
     if (isDemoMode) {
       showToast('Demo mode — purchase not available');
       return;
     }
-    // real purchase flow goes here
+
+    setLoading(plan);
+    try {
+      const purchased = plan === 'monthly'
+        ? await purchaseMonthly()
+        : await purchaseAnnual();
+
+      if (purchased) {
+        setIsPremium(true);
+        showToast('Welcome to Premium!');
+        navigation.goBack();
+      } else {
+        showToast('Purchase could not be completed. Try again.');
+      }
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleRestore() {
+    if (isDemoMode) {
+      showToast('Demo mode — restore not available');
+      return;
+    }
+
+    setLoading('restore');
+    try {
+      const restored = await restorePurchases();
+      if (restored) {
+        setIsPremium(true);
+        showToast('Premium restored!');
+        navigation.goBack();
+      } else {
+        showToast('No active subscription found.');
+      }
+    } finally {
+      setLoading(null);
+    }
   }
 
   return (
@@ -50,7 +97,7 @@ export default function PaywallScreen({ navigation }: Props) {
         <View style={s.lockSection}>
           <Text style={s.lockIcon}>🔒</Text>
           <Text style={s.lockTitle}>
-            You've used your 3 free sprints today
+            You've used your {SPRINT_LIMIT_FREE} free sprints this month
           </Text>
           <Text style={s.lockSub}>
             Upgrade to SkillSprint Premium for unlimited access
@@ -61,12 +108,8 @@ export default function PaywallScreen({ navigation }: Props) {
         <View style={s.table}>
           <View style={s.tableHeader}>
             <Text style={s.tableHeaderLabel} />
-            <Text style={[s.tableHeaderCell, { color: '#8888AA' }]}>
-              Free
-            </Text>
-            <Text style={[s.tableHeaderCell, { color: accent }]}>
-              Premium
-            </Text>
+            <Text style={[s.tableHeaderCell, { color: '#8888AA' }]}>Free</Text>
+            <Text style={[s.tableHeaderCell, { color: accent }]}>Premium</Text>
           </View>
           {FEATURES.map((f) => (
             <View key={f.label} style={s.tableRow}>
@@ -79,31 +122,58 @@ export default function PaywallScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* Pricing CTAs */}
+        {/* Monthly CTA */}
         <TouchableOpacity
-          style={[s.primaryBtn, { backgroundColor: accent }]}
+          style={[s.primaryBtn, { backgroundColor: accent }, loading !== null && s.btnDisabled]}
           onPress={() => handleSubscribe('monthly')}
+          disabled={loading !== null}
           accessibilityRole="button"
           accessibilityLabel="Subscribe monthly for $9.99"
         >
-          <Text style={s.primaryBtnText}>$9.99 / month</Text>
+          {loading === 'monthly' ? (
+            <ActivityIndicator color="#0F0F13" />
+          ) : (
+            <Text style={s.primaryBtnText}>$9.99 / month</Text>
+          )}
         </TouchableOpacity>
 
+        {/* Annual CTA */}
         <TouchableOpacity
-          style={[s.secondaryBtn, { borderColor: accent + '66' }]}
+          style={[s.secondaryBtn, { borderColor: accent + '66' }, loading !== null && s.btnDisabled]}
           onPress={() => handleSubscribe('annual')}
+          disabled={loading !== null}
           accessibilityRole="button"
-          accessibilityLabel="Subscribe annually for $59.99, save 50 percent"
+          accessibilityLabel="Subscribe annually for $79, save 34 percent"
         >
-          <Text style={[s.secondaryBtnText, { color: accent }]}>
-            $59.99 / year — save 50%
-          </Text>
+          {loading === 'annual' ? (
+            <ActivityIndicator color={accent} />
+          ) : (
+            <Text style={[s.secondaryBtnText, { color: accent }]}>
+              $79 / year — save 34%
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Restore */}
+        <TouchableOpacity
+          style={s.dismissBtn}
+          onPress={handleRestore}
+          disabled={loading !== null}
+          accessibilityRole="button"
+          accessibilityLabel="Restore purchases"
+        >
+          {loading === 'restore' ? (
+            <ActivityIndicator color="#8888AA" size="small" />
+          ) : (
+            <Text style={s.restoreText}>Restore purchases</Text>
+          )}
         </TouchableOpacity>
 
         {/* Dismiss */}
         <TouchableOpacity
           style={s.dismissBtn}
           onPress={() => navigation.goBack()}
+          disabled={loading !== null}
           accessibilityRole="button"
           accessibilityLabel="Maybe later"
         >
@@ -178,6 +248,8 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
   },
   secondaryBtnText: { fontSize: 15, fontWeight: '700' },
+  btnDisabled: { opacity: 0.6 },
   dismissBtn: { paddingVertical: 8 },
+  restoreText: { fontSize: 13, color: '#8888AA' },
   dismissText: { fontSize: 14, color: '#8888AA' },
 });

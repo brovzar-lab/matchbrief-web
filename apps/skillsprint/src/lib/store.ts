@@ -10,6 +10,7 @@ interface SkillSprintStore {
   hasOnboarded: boolean;
   selectedTrack: TrackId | null;
   isPremium: boolean;
+  monthlySprintCount: number;
   streak: number;
   xp: number;
   toastMessage: string | null;
@@ -20,6 +21,7 @@ interface SkillSprintStore {
   setTrack: (track: TrackId) => void;
   completeOnboarding: () => void;
   setIsPremium: (v: boolean) => void;
+  setMonthlySprintCount: (n: number) => void;
   setStreak: (n: number) => void;
   setXp: (n: number) => void;
   showToast: (message: string) => void;
@@ -34,6 +36,7 @@ export const useStore = create<SkillSprintStore>()(
       hasOnboarded: false,
       selectedTrack: null,
       isPremium: false,
+      monthlySprintCount: isDemoMode ? 2 : 0,
       streak: isDemoMode ? 7 : 0,
       xp: isDemoMode ? 1240 : 0,
       toastMessage: null,
@@ -44,6 +47,7 @@ export const useStore = create<SkillSprintStore>()(
       setTrack: (track) => set({ selectedTrack: track }),
       completeOnboarding: () => set({ hasOnboarded: true }),
       setIsPremium: (v) => set({ isPremium: v }),
+      setMonthlySprintCount: (n) => set({ monthlySprintCount: n }),
       setStreak: (n) => set({ streak: n }),
       setXp: (n) => set({ xp: n }),
       showToast: (message) => set({ toastMessage: message }),
