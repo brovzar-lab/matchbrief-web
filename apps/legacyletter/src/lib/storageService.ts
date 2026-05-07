@@ -1,6 +1,29 @@
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage } from './firebase';
 
+export async function uploadVideo(
+  uid: string,
+  legacyId: string,
+  localUri: string,
+  onProgress?: (pct: number) => void
+): Promise<string> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+
+  const storagePath = `users/${uid}/video/${legacyId}.mp4`;
+  const storageRef = ref(storage!, storagePath);
+
+  return new Promise((resolve, reject) => {
+    const task = uploadBytesResumable(storageRef, blob, { contentType: 'video/mp4' });
+    task.on(
+      'state_changed',
+      (snap) => onProgress?.(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      reject,
+      () => resolve(storagePath)
+    );
+  });
+}
+
 export async function uploadVoiceMemo(
   uid: string,
   legacyId: string,
