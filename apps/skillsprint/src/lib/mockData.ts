@@ -83,6 +83,10 @@ export const DEMO_RIVAL = {
   userLosses: 1,
   rivalWins: 1,
   rivalLosses: 3,
+  sharedChallenge: {
+    title: 'Explain memoization with a practical example',
+    difficulty: 'Medium' as Difficulty,
+  },
 };
 
 function buildCompletedDays(): string[] {
