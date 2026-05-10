@@ -1,6 +1,7 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, onRequest, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
@@ -16,6 +17,12 @@ if (getApps().length === 0) {
 }
 
 const anthropicKey = defineSecret('ANTHROPIC_API_KEY');
+const rcWebhookSecret = defineSecret('RC_WEBHOOK_SECRET');
+
+type RCWebhookEvent = {
+  type: string;
+  app_user_id: string;
+};
 
 type SynthesizeUrlRequest = {
   url: string;
@@ -131,5 +138,34 @@ export const synthesizePdf = onCall<SynthesizePdfRequest, Promise<SynthesisRespo
     });
 
     return { synthesisId, ...synthesis };
+  },
+);
+
+export const rcWebhook = onRequest(
+  { cors: false, secrets: [rcWebhookSecret] },
+  async (req, res) => {
+    const secret = rcWebhookSecret.value();
+    if (req.headers.authorization !== `Bearer ${secret}`) {
+      res.status(401).send('Unauthorized');
+      return;
+    }
+
+    const event = req.body as RCWebhookEvent;
+    const uid = event.app_user_id;
+
+    if (!uid) {
+      res.status(400).send('Missing app_user_id');
+      return;
+    }
+
+    const db = getFirestore();
+
+    if (['INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION'].includes(event.type)) {
+      await db.doc(`users/${uid}`).set({ tier: 'pro' }, { merge: true });
+    } else if (['CANCELLATION', 'EXPIRATION', 'BILLING_ISSUE'].includes(event.type)) {
+      await db.doc(`users/${uid}`).set({ tier: 'free' }, { merge: true });
+    }
+
+    res.status(200).send('ok');
   },
 );
