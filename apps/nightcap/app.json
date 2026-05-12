@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "NightCap",
+    "slug": "nightcap",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0A1E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lemaa.nightcap",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "NightCap records your voice journal entries."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0A1E"
+      },
+      "package": "com.lemaa.nightcap",
+      "permissions": ["INTERNET", "RECORD_AUDIO", "VIBRATE"]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "NightCap records your voice journal entries."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
