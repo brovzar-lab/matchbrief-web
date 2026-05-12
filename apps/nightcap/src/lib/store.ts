@@ -8,6 +8,9 @@ interface NightCapState {
   user: UserProfile | null;
   isDemo: boolean;
 
+  // RevenueCat — set true on launch if entitlement active, persists until sign-out
+  rcPremiumActive: boolean;
+
   // Journal
   journals: Record<string, JournalEntry>; // keyed by YYYY-MM-DD
   patterns: PatternCard[];
@@ -18,6 +21,7 @@ interface NightCapState {
 
   // Actions
   setUser: (user: UserProfile | null) => void;
+  setRcPremiumActive: (active: boolean) => void;
   setJournals: (journals: Record<string, JournalEntry>) => void;
   upsertJournal: (entry: JournalEntry) => void;
   setPatterns: (patterns: PatternCard[]) => void;
@@ -29,6 +33,7 @@ interface NightCapState {
 export const useStore = create<NightCapState>((set) => ({
   user: isDemoMode ? DEMO_USER : null,
   isDemo: isDemoMode,
+  rcPremiumActive: false,
   journals: isDemoMode
     ? Object.fromEntries(DEMO_JOURNALS.map((j) => [j.date, j]))
     : {},
@@ -37,6 +42,7 @@ export const useStore = create<NightCapState>((set) => ({
   pendingTags: [],
 
   setUser: (user) => set({ user }),
+  setRcPremiumActive: (active) => set({ rcPremiumActive: active }),
   setJournals: (journals) => set({ journals }),
   upsertJournal: (entry) =>
     set((s) => ({ journals: { ...s.journals, [entry.date]: entry } })),
@@ -47,6 +53,7 @@ export const useStore = create<NightCapState>((set) => ({
   signOut: () =>
     set({
       user: isDemoMode ? DEMO_USER : null,
+      rcPremiumActive: false,
       journals: isDemoMode
         ? Object.fromEntries(DEMO_JOURNALS.map((j) => [j.date, j]))
         : {},

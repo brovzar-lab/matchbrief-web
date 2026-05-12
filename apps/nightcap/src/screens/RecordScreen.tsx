@@ -10,6 +10,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { BG, CARD, TEXT, SUBTEXT, ACCENT, ACCENT_LIGHT, GRAD_START, GRAD_END, BORDER } from '../lib/config';
 import { isDemoMode } from '../lib/config';
 import { useStore } from '../lib/store';
+import { getFirebaseApp } from '../lib/firebase';
 import DemoModeBadge from '../components/DemoModeBadge';
 import type { TabParamList } from '../navigation/RootNavigator';
 
@@ -30,6 +31,7 @@ export default function RecordScreen() {
   const [elapsed, setElapsed] = useState(0);
   const [uploading, setUploading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingRef = useRef<any>(null);
 
   // Waveform animation values
   const barAnims = useRef(Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.15))).current;
@@ -73,6 +75,8 @@ export default function RecordScreen() {
       const { Audio } = await import('expo-av');
       await Audio.requestPermissionsAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recordingRef.current = recording;
       setRecording(true);
       startWaveAnimation();
       timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
@@ -101,10 +105,54 @@ export default function RecordScreen() {
       return;
     }
 
-    // Real: upload audio and call transcribeVoice CF — wired in APPU-403
-    setUploading(false);
-    setElapsed(0);
-    nav.navigate('Rate');
+    try {
+      const rec = recordingRef.current;
+      recordingRef.current = null;
+      let transcript = '';
+      let tags: string[] = [];
+
+      if (rec) {
+        await rec.stopAndUnloadAsync();
+        const uri: string | null = rec.getURI();
+
+        if (uri) {
+          const app = await getFirebaseApp();
+          const uid = useStore.getState().user?.uid;
+
+          if (app && uid) {
+            const { getStorage: _gs, ref: sRef, uploadBytes } = await import('firebase/storage');
+            const audioPath = `users/${uid}/audio/${Date.now()}.m4a`;
+            const fileRef = sRef(_gs(app), audioPath);
+            const blob: Blob = await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.onload = () => resolve(xhr.response as Blob);
+              xhr.onerror = () => reject(new Error('Upload failed'));
+              xhr.responseType = 'blob';
+              xhr.open('GET', uri, true);
+              xhr.send(null);
+            });
+            await uploadBytes(fileRef, blob, { contentType: 'audio/m4a' });
+
+            const { getFunctions, httpsCallable } = await import('firebase/functions');
+            const transcribeVoice = httpsCallable<
+              { audioStoragePath: string },
+              { transcript: string; tags: string[] }
+            >(getFunctions(app), 'transcribeVoice');
+            const result = await transcribeVoice({ audioStoragePath: audioPath });
+            transcript = result.data.transcript;
+            tags = result.data.tags;
+          }
+        }
+      }
+
+      setPendingTranscript(transcript, tags);
+    } catch {
+      Alert.alert('Transcription failed', 'Could not process your recording. Please try again.');
+    } finally {
+      setUploading(false);
+      setElapsed(0);
+      nav.navigate('Rate');
+    }
   }
 
   useEffect(() => {

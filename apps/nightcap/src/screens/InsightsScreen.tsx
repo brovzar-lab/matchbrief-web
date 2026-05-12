@@ -4,12 +4,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Purchases from 'react-native-purchases';
 
 import {
-  BG, CARD, BORDER, TEXT, SUBTEXT, ACCENT, ACCENT_LIGHT, GRAD_START, GRAD_END,
+  CARD, BORDER, TEXT, SUBTEXT, ACCENT, ACCENT_LIGHT, GRAD_START, GRAD_END,
 } from '../lib/config';
-import { isDemoMode } from '../lib/config';
+import { isDemoMode, RC_MONTHLY_ID, RC_ANNUAL_ID, RC_ENTITLEMENT_ID } from '../lib/config';
 import { useStore } from '../lib/store';
+import { getFirebaseApp, getFirestore } from '../lib/firebase';
 import DemoModeBadge from '../components/DemoModeBadge';
 import type { PatternCard } from '../lib/types';
 
@@ -41,7 +43,7 @@ function PatternCardView({ card }: { card: PatternCard }) {
   );
 }
 
-function PaywallGate({ onUnlock }: { onUnlock: () => void }) {
+function PaywallGate({ onMonthly, onAnnual }: { onMonthly: () => void; onAnnual: () => void }) {
   return (
     <View style={styles.paywallOverlay}>
       <View style={styles.paywallCard}>
@@ -51,10 +53,13 @@ function PaywallGate({ onUnlock }: { onUnlock: () => void }) {
           After 14 days of journaling, NightCap detects recurring patterns in your energy, focus, and output.
           Upgrade to see what your data is telling you.
         </Text>
-        <TouchableOpacity style={styles.paywallBtn} onPress={onUnlock}>
-          <Text style={styles.paywallBtnText}>Start Free Trial — 14 days</Text>
+        <TouchableOpacity style={styles.paywallBtn} onPress={onMonthly}>
+          <Text style={styles.paywallBtnText}>Start Free Trial — $7.99/mo</Text>
         </TouchableOpacity>
-        <Text style={styles.paywallSub}>$7.99/mo or $59.99/yr after trial · Cancel anytime</Text>
+        <TouchableOpacity style={[styles.paywallBtn, styles.paywallBtnAlt]} onPress={onAnnual}>
+          <Text style={styles.paywallBtnText}>Annual — $59.99/yr · Best value</Text>
+        </TouchableOpacity>
+        <Text style={styles.paywallSub}>14-day free trial · Cancel anytime</Text>
       </View>
     </View>
   );
@@ -62,21 +67,85 @@ function PaywallGate({ onUnlock }: { onUnlock: () => void }) {
 
 export default function InsightsScreen() {
   const user = useStore((s) => s.user);
+  const setUser = useStore((s) => s.setUser);
+  const rcPremiumActive = useStore((s) => s.rcPremiumActive);
+  const setRcPremiumActive = useStore((s) => s.setRcPremiumActive);
   const patterns = useStore((s) => s.patterns);
   const journals = useStore((s) => s.journals);
   const [range, setRange] = useState<Range>('7d');
+  const [generatingPatterns, setGeneratingPatterns] = useState(false);
+  const setPatterns = useStore((s) => s.setPatterns);
 
   const entryCount = Object.keys(journals).length;
   const hasEnoughData = entryCount >= 14 || isDemoMode;
-  const isPremium = user?.tier === 'premium' || isDemoMode;
+  const isPremium = user?.tier === 'premium' || rcPremiumActive || isDemoMode;
   const showPaywall = hasEnoughData && !isPremium;
 
-  function handleUpgrade() {
+  async function handleGeneratePatterns() {
+    if (isDemoMode) {
+      Alert.alert('Demo Mode', 'Pattern generation would call the generatePatterns Cloud Function. In demo mode, patterns are pre-loaded.');
+      return;
+    }
+    try {
+      setGeneratingPatterns(true);
+      const app = await getFirebaseApp();
+      if (!app) return;
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const generate = httpsCallable<Record<string, never>, { generated: number }>(
+        getFunctions(app),
+        'generatePatterns',
+      );
+      await generate({});
+      const db = await getFirestore();
+      const uid = useStore.getState().user?.uid;
+      if (db && uid) {
+        const { collection, getDocs, query, orderBy } = await import('firebase/firestore');
+        const snap = await getDocs(
+          query(collection(db, `users/${uid}/patterns`), orderBy('generatedAt', 'desc')),
+        );
+        setPatterns(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as PatternCard[]);
+      }
+    } catch (err: any) {
+      Alert.alert(
+        'Generation Failed',
+        err?.message ?? 'Need at least 14 journal entries to generate patterns.',
+      );
+    } finally {
+      setGeneratingPatterns(false);
+    }
+  }
+
+  async function handleUpgrade(plan: 'monthly' | 'annual') {
     if (isDemoMode) {
       Alert.alert('Demo Mode', 'RevenueCat paywall would appear here. In demo mode, premium is unlocked by default.');
       return;
     }
-    // Wire RevenueCat purchase in APPU-404
+    try {
+      const offerings = await Purchases.getOfferings();
+      const packages = offerings.current?.availablePackages ?? [];
+      const targetId = plan === 'monthly' ? RC_MONTHLY_ID : RC_ANNUAL_ID;
+      const pkg = packages.find((p) => p.identifier === targetId) ?? packages[0];
+      if (!pkg) {
+        Alert.alert('Unavailable', 'No packages available right now. Please try again later.');
+        return;
+      }
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      if (customerInfo.entitlements.active[RC_ENTITLEMENT_ID]) {
+        setRcPremiumActive(true);
+        if (user) {
+          setUser({ ...user, tier: 'premium' });
+          const db = await getFirestore();
+          if (db) {
+            const { doc, updateDoc } = await import('firebase/firestore');
+            await updateDoc(doc(db, 'users', user.uid), { tier: 'premium' });
+          }
+        }
+      }
+    } catch (e: any) {
+      if (!e.userCancelled) {
+        Alert.alert('Purchase failed', 'Something went wrong. Please try again.');
+      }
+    }
   }
 
   return (
@@ -128,11 +197,27 @@ export default function InsightsScreen() {
                   </Text>
                 </View>
               )}
+              {isPremium && (
+                <TouchableOpacity
+                  style={[styles.generateBtn, generatingPatterns && styles.generateBtnDisabled]}
+                  onPress={handleGeneratePatterns}
+                  disabled={generatingPatterns}
+                >
+                  <Text style={styles.generateBtnText}>
+                    {generatingPatterns ? 'Generating…' : '✨ Generate Patterns'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
           {/* Paywall overlay */}
-          {showPaywall && <PaywallGate onUnlock={handleUpgrade} />}
+          {showPaywall && (
+            <PaywallGate
+              onMonthly={() => handleUpgrade('monthly')}
+              onAnnual={() => handleUpgrade('annual')}
+            />
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -199,9 +284,21 @@ const styles = StyleSheet.create({
   paywallEmoji: { fontSize: 44, marginBottom: 14 },
   paywallTitle: { fontSize: 22, fontWeight: '700', color: TEXT, marginBottom: 10, textAlign: 'center' },
   paywallBody: { fontSize: 14, color: SUBTEXT, lineHeight: 21, textAlign: 'center', marginBottom: 24 },
-  paywallBtn: { backgroundColor: ACCENT, borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', marginBottom: 12 },
+  paywallBtn: { backgroundColor: ACCENT, borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', marginBottom: 10 },
+  paywallBtnAlt: { backgroundColor: ACCENT + 'BB' },
   paywallBtnText: { color: TEXT, fontWeight: '700', fontSize: 15 },
-  paywallSub: { fontSize: 12, color: SUBTEXT, textAlign: 'center' },
+  paywallSub: { fontSize: 12, color: SUBTEXT, textAlign: 'center', marginTop: 4 },
   emptyPatterns: { backgroundColor: CARD, borderRadius: 12, borderWidth: 1, borderColor: BORDER, padding: 20 },
   emptyPatternsText: { color: SUBTEXT, fontSize: 14, textAlign: 'center' },
+  generateBtn: {
+    backgroundColor: ACCENT + '22',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  generateBtnDisabled: { opacity: 0.5 },
+  generateBtnText: { color: ACCENT_LIGHT, fontWeight: '600', fontSize: 14 },
 });
