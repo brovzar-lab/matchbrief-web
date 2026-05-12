@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "ShiftSwap",
+    "slug": "shiftswap",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1829"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lemaa.shiftswap",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1829"
+      },
+      "package": "com.lemaa.shiftswap",
+      "permissions": ["INTERNET", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#0EA5E9",
+          "sounds": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
