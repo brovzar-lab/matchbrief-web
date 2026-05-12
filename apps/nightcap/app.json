@@ -30,7 +30,8 @@
         {
           "microphonePermission": "NightCap records your voice journal entries."
         }
-      ]
+      ],
+      "react-native-purchases"
     ],
     "experiments": {
       "typedRoutes": false
