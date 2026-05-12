@@ -21,7 +21,7 @@
         "backgroundColor": "#0B1829"
       },
       "package": "com.lemaa.shiftswap",
-      "permissions": ["INTERNET", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
+      "permissions": ["INTERNET", "RECEIVE_BOOT_COMPLETED", "VIBRATE", "POST_NOTIFICATIONS"]
     },
     "plugins": [
       [

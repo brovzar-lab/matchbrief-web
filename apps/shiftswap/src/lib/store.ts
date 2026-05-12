@@ -11,6 +11,7 @@ import {
 } from '../demo/seed';
 import { isDemoMode } from './config';
 import { auth, db } from './firebase';
+import { registerAndSaveFcmToken } from './notifications';
 
 interface AppState {
   user: AppUser | null;
@@ -61,15 +62,20 @@ export function initAuthListener(): () => void {
       const userDoc = await getDoc(doc(db!, 'users', firebaseUser.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
+        const companyId = data['companyId'] as string ?? '';
+        const locationId = data['locationId'] as string ?? '';
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email ?? '',
           name: data['name'] as string ?? '',
-          companyId: data['companyId'] as string ?? '',
-          locationId: data['locationId'] as string ?? '',
+          companyId,
+          locationId,
           role: (data['role'] as 'manager' | 'worker') ?? 'worker',
           fcmToken: data['fcmToken'] as string | undefined,
         });
+        // Fire-and-forget — token refresh on every app open so rotated tokens
+        // are always current. Failures are swallowed inside the utility.
+        registerAndSaveFcmToken(firebaseUser.uid, companyId, locationId);
       } else {
         setUser(null);
       }
