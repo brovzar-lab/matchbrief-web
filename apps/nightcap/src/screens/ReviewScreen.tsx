@@ -54,9 +54,16 @@ export default function ReviewScreen() {
       setTimeout(() => nav.navigate('Home'), 800);
       return;
     }
-    // Real Firestore save wired in APPU-403
     try {
-      upsertJournal({ ...entry, transcript, tags });
+      const { getAuth, getFirestore } = await import('../lib/firebase');
+      const [auth, db] = await Promise.all([getAuth(), getFirestore()]);
+      if (!db || !auth?.currentUser) throw new Error('Not signed in');
+
+      const { doc, setDoc } = await import('firebase/firestore');
+      const updated = { ...entry, transcript, tags };
+      await setDoc(doc(db, 'users', auth.currentUser.uid, 'journals', today), updated);
+
+      upsertJournal(updated);
       clearPending();
       setSaved(true);
       setTimeout(() => nav.navigate('Home'), 800);

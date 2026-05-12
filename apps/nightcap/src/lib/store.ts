@@ -63,6 +63,75 @@ export const useStore = create<NightCapState>((set) => ({
 
 export function initAuthListener() {
   if (isDemoMode) return () => {};
-  // Firebase auth listener wired in APPU-403
-  return () => {};
+
+  let detach: (() => void) | undefined;
+
+  (async () => {
+    const { getAuth: getAuthInstance, getFirestore: getDbInstance } = await import('./firebase');
+    const [auth, db] = await Promise.all([getAuthInstance(), getDbInstance()]);
+    if (!auth || !db) return;
+
+    const { onAuthStateChanged } = await import('firebase/auth');
+    const { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs } =
+      await import('firebase/firestore');
+
+    detach = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        useStore.setState({ user: null, journals: {}, patterns: [] });
+        return;
+      }
+
+      const { uid, displayName, email } = firebaseUser;
+      const profileRef = doc(db, 'users', uid);
+      const snap = await getDoc(profileRef);
+
+      let profile: UserProfile;
+      if (!snap.exists()) {
+        const now = new Date().toISOString();
+        profile = {
+          uid,
+          displayName: displayName ?? '',
+          email: email ?? '',
+          createdAt: now,
+          trialStartDate: now,
+          tier: 'free',
+        };
+        await setDoc(profileRef, profile);
+      } else {
+        profile = { uid, ...(snap.data() as Omit<UserProfile, 'uid'>) };
+      }
+
+      useStore.setState({ user: profile });
+
+      const [journalsSnap, patternsSnap] = await Promise.all([
+        getDocs(
+          query(collection(db, 'users', uid, 'journals'), orderBy('createdAt', 'desc'), limit(30)),
+        ),
+        getDocs(
+          query(
+            collection(db, 'users', uid, 'patterns'),
+            orderBy('generatedAt', 'desc'),
+            limit(10),
+          ),
+        ),
+      ]);
+
+      const journals: Record<string, JournalEntry> = {};
+      journalsSnap.forEach((d) => {
+        const data = d.data() as JournalEntry;
+        journals[data.date] = data;
+      });
+
+      const patterns: PatternCard[] = patternsSnap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<PatternCard, 'id'>),
+      }));
+
+      useStore.setState({ journals, patterns });
+    });
+  })();
+
+  return () => {
+    detach?.();
+  };
 }

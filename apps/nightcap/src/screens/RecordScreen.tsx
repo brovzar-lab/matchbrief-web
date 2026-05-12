@@ -79,7 +79,15 @@ export default function RecordScreen() {
       recordingRef.current = recording;
       setRecording(true);
       startWaveAnimation();
-      timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
+      timerRef.current = setInterval(() => {
+        setElapsed((prev) => {
+          if (prev >= MAX_SECONDS - 1) {
+            stopRecording();
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
     } catch {
       Alert.alert('Permission denied', 'Microphone access is required to record.');
     }
@@ -121,7 +129,7 @@ export default function RecordScreen() {
 
           if (app && uid) {
             const { getStorage: _gs, ref: sRef, uploadBytes } = await import('firebase/storage');
-            const audioPath = `users/${uid}/audio/${Date.now()}.m4a`;
+            const audioPath = `users/${uid}/audio/${new Date().toISOString().split('T')[0]}.m4a`;
             const fileRef = sRef(_gs(app), audioPath);
             const blob: Blob = await new Promise((resolve, reject) => {
               const xhr = new XMLHttpRequest();
@@ -159,6 +167,10 @@ export default function RecordScreen() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       stopWaveAnimation();
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
     };
   }, []);
 
