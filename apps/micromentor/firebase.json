@@ -1,0 +1,27 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "micromentor",
+      "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "lib"]
+    }
+  ],
+  "emulators": {
+    "auth": {
+      "port": 9199
+    },
+    "functions": {
+      "port": 5201
+    },
+    "firestore": {
+      "port": 8180
+    },
+    "ui": {
+      "enabled": true
+    }
+  }
+}

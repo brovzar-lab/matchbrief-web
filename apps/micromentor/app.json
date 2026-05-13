@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "MicroMentor",
+    "slug": "micromentor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0A1628"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lemaa.micromentor",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A1628"
+      },
+      "package": "com.lemaa.micromentor",
+      "permissions": ["INTERNET", "VIBRATE"]
+    },
+    "plugins": [
+      "react-native-purchases"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
