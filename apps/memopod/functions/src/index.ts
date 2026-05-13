@@ -19,7 +19,7 @@ interface ClassifyResult {
 // Writes the memo doc to Firestore, enforces 20/month free limit.
 // Returns { memoId, category, extractedDate }.
 // ---------------------------------------------------------------------------
-export const classifyMemo = functions.https.onCall(async (data, context) => {
+export const classifyMemo = functions.runWith({ secrets: ['ANTHROPIC_API_KEY'] }).https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -45,10 +45,8 @@ export const classifyMemo = functions.https.onCall(async (data, context) => {
     );
   }
 
-  // Classify with Claude Haiku
-  // Key comes from `firebase functions:config:set anthropic.key="sk-..."` or ANTHROPIC_API_KEY env var
-  const anthropicKey = (functions.config().anthropic as { key?: string } | undefined)?.key ?? process.env.ANTHROPIC_API_KEY;
-  const anthropic = new Anthropic({ apiKey: anthropicKey });
+  // Classify with Claude Haiku — key injected via Secret Manager (ANTHROPIC_API_KEY)
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -184,7 +182,7 @@ export const rcWebhook = functions.https.onRequest(async (req, res) => {
   }
 
   const authHeader = req.headers['authorization'];
-  const expectedSecret = (functions.config().rc as { webhook_secret?: string } | undefined)?.webhook_secret ?? process.env.RC_WEBHOOK_SECRET;
+  const expectedSecret = process.env.RC_WEBHOOK_SECRET;
   if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
     res.status(401).send('Unauthorized');
     return;
