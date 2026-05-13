@@ -46,7 +46,9 @@ export const classifyMemo = functions.https.onCall(async (data, context) => {
   }
 
   // Classify with Claude Haiku
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  // Key comes from `firebase functions:config:set anthropic.key="sk-..."` or ANTHROPIC_API_KEY env var
+  const anthropicKey = (functions.config().anthropic as { key?: string } | undefined)?.key ?? process.env.ANTHROPIC_API_KEY;
+  const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -182,7 +184,7 @@ export const rcWebhook = functions.https.onRequest(async (req, res) => {
   }
 
   const authHeader = req.headers['authorization'];
-  const expectedSecret = process.env.RC_WEBHOOK_SECRET;
+  const expectedSecret = (functions.config().rc as { webhook_secret?: string } | undefined)?.webhook_secret ?? process.env.RC_WEBHOOK_SECRET;
   if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
     res.status(401).send('Unauthorized');
     return;

@@ -2,7 +2,9 @@
   "name": "@lemaa/memopod-functions",
   "private": true,
   "version": "0.1.0",
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "20"
+  },
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
@@ -17,6 +19,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3"
   }
 }
