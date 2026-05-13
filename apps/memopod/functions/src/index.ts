@@ -31,19 +31,8 @@ export const classifyMemo = functions.runWith({ secrets: ['ANTHROPIC_API_KEY'] }
     throw new functions.https.HttpsError('invalid-argument', 'text is required.');
   }
 
-  // Free limit enforcement
+  // Limit enforcement disabled — billing deferred post-MVP
   const profileRef = db.doc(`users/${uid}/profile/data`);
-  const profileSnap = await profileRef.get();
-  const profileData = profileSnap.data() as { memoCountThisMonth?: number; isPremium?: boolean } | undefined;
-  const memoCount = profileData?.memoCountThisMonth ?? 0;
-  const isPremium = profileData?.isPremium ?? false;
-
-  if (!isPremium && memoCount >= 20) {
-    throw new functions.https.HttpsError(
-      'resource-exhausted',
-      'Free limit of 20 memos/month reached. Upgrade to Premium for unlimited capture.',
-    );
-  }
 
   // Classify with Claude Haiku — key injected via Secret Manager (ANTHROPIC_API_KEY)
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
