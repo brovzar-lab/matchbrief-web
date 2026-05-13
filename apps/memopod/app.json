@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "MemoPod",
+    "slug": "memopod",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lemaa.memopod",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "MemoPod records your voice memos for transcription."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.lemaa.memopod",
+      "permissions": ["INTERNET", "RECORD_AUDIO", "VIBRATE"]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "MemoPod records your voice memos for transcription."
+        }
+      ],
+      "react-native-purchases"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
