@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "GlowLog",
+    "slug": "glowlog",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FDF6F0"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lemaa.glowlog",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "GlowLog needs camera access to capture skin check photos.",
+        "NSPhotoLibraryUsageDescription": "GlowLog needs photo library access to upload product and skin check photos."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FDF6F0"
+      },
+      "package": "com.lemaa.glowlog",
+      "permissions": ["INTERNET", "CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
+    },
+    "plugins": [
+      "react-native-purchases",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GlowLog needs access to your photos to upload skin check photos.",
+          "cameraPermission": "GlowLog needs camera access to capture skin check photos."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
